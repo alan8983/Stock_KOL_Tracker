@@ -1,0 +1,45 @@
+name: stock_kol_tracker
+description: Stock KOL Tracker MVP
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Database
+  drift: ^2.16.0
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.2
+  path: ^1.9.0
+
+  # Network
+  dio: ^5.4.1
+
+  # AI
+  google_generative_ai: ^0.2.2
+
+  # Env
+  flutter_dotenv: ^5.1.0
+
+  # UI/Charts (Phase 4)
+  fl_chart: ^0.66.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.4.0
+  drift_dev: ^2.16.0
+
+flutter:
+  uses-material-design: true
+
