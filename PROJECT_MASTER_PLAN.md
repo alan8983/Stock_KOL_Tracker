@@ -14,9 +14,9 @@
 *   **Environment Variables**: flutter_dotenv
 
 ### 外部服務 (External Services)
-*   **Market Data**: Alpha Vantage API
-    *   用途：取得個股歷史股價 (Daily/Intraday)。
-    *   Key Management: `.env` 檔案中 `ALPHA_VANTAGE_KEY`。
+*   **Market Data**: Tiingo API
+    *   用途：取得個股歷史股價 (Daily Adjusted)。
+    *   Key Management: `.env` 檔案中 `TIINGO_API_TOKEN`。
 *   **LLM Intelligence**: Google Gemini API
     *   用途：分析輸入文本的情緒 (Sentiment) 與提及的標的 (Ticker)。
     *   Key Management: `.env` 檔案中 `GEMINI_API_KEY`。
@@ -80,7 +80,7 @@
 4.  **Database Setup**: 建立 Drift 資料庫連線與 Table 定義。
 
 ### Phase 2: Infrastructure (核心服務)
-1.  **AlphaVantageService**:
+1.  **TiingoService**:
     *   實作 `fetchDailyPrices(String ticker)`。
     *   實作快取機制：先查 DB，若無資料或過期才打 API。
 2.  **GeminiService**:
@@ -119,7 +119,7 @@ lib/
 │   ├── database/ (Drift DB)
 │   ├── models/
 │   ├── repositories/
-│   └── services/ (AlphaVantage, Gemini)
+│   └── services/ (Tiingo, Gemini)
 ├── domain/
 │   └── providers/ (Riverpod Providers)
 └── presentation/
@@ -129,4 +129,3 @@ lib/
     │   └── kol_detail/
     └── widgets/
 ```
-

@@ -2,14 +2,59 @@
 name: Stock_KOL_Tracker_MVP_Plan
 overview: 建立詳細的專案執行計畫文檔 (PROJECT_MASTER_PLAN.md)，定義 Flutter 架構、資料庫 Schema、以及整合 Gemini 和 Alpha Vantage 的具體步驟，作為開發團隊的唯一依據。
 todos:
-  - id: create_master_plan
-    content: 撰寫並建立 PROJECT_MASTER_PLAN.md
+  - id: phase_1_init
+    content: "[Phase 1] 初始化 Flutter 專案與環境設定"
     status: completed
-  - id: init_project
-    content: 依據 Master Plan 初始化 Flutter 專案結構
+  - id: phase_1_db
+    content: "[Phase 1] 設計本地資料庫架構 (Drift DB Setup)"
     status: completed
     dependencies:
-      - create_master_plan
+      - phase_1_init
+  - id: phase_2_tiingo
+    content: "[Phase 2] 實作 TiingoService (Fetch & Cache)"
+    status: completed
+    dependencies:
+      - phase_1_db
+  - id: phase_2_gemini
+    content: "[Phase 2] 實作 GeminiService (分析邏輯)"
+    status: completed
+    dependencies:
+      - phase_1_db
+  - id: phase_3_ui_input
+    content: "[Phase 3] 建立 Draft 輸入頁面 UI"
+    status: pending
+    dependencies:
+      - phase_2_gemini
+  - id: phase_3_logic_autofill
+    content: "[Phase 3] 實作自動填入邏輯 (Auto-Fill)"
+    status: in_progress
+    dependencies:
+      - phase_3_ui_input
+  - id: phase_3_logic_save
+    content: "[Phase 3] 實作 Review 與儲存功能 (Save to DB)"
+    status: pending
+    dependencies:
+      - phase_3_logic_autofill
+  - id: phase_4_ui_kol
+    content: "[Phase 4] 建立 KOL 列表與詳情頁 UI"
+    status: pending
+    dependencies:
+      - phase_3_logic_save
+  - id: phase_4_chart
+    content: "[Phase 4] 實作 K 線圖與標記繪製 (Chart & Markers)"
+    status: pending
+    dependencies:
+      - phase_4_ui_kol
+  - id: phase_4_backtest
+    content: "[Phase 4] 實作回測邏輯 (Win Rate Calculation)"
+    status: pending
+    dependencies:
+      - phase_4_chart
+  - id: phase_5_refine
+    content: "[Phase 5] 錯誤處理與 UI 優化"
+    status: pending
+    dependencies:
+      - phase_4_backtest
 ---
 
 # Stock KOL Tracker MVP 專案執行計畫
