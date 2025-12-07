@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快速記錄 - Stock KOL Tracker</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 頂部導航 -->
+    <header class="header">
+        <div class="header-content">
+            <button class="btn btn-outline" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+                返回
+            </button>
+            <h1 class="page-title">
+                <i class="fas fa-edit"></i>
+                快速記錄
+            </h1>
+        </div>
+    </header>
+
+    <!-- 主要內容區域 -->
+    <main class="main-content">
+        <!-- 輸入區域 -->
+        <section class="input-section">
+            <div class="form-group">
+                <label class="form-label" for="kol-content">
+                    <i class="fas fa-comment"></i>
+                    輸入KOL發言內容
+                </label>
+                <textarea 
+                    id="kol-content" 
+                    class="form-input form-textarea" 
+                    placeholder="在此輸入或貼上KOL的發言內容..."
+                    rows="6"
+                ></textarea>
+            </div>
+
+            <!-- 圖片上傳區域 -->
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-image"></i>
+                    上傳附件 (僅支援圖片檔)
+                </label>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>點擊選擇圖片或拖拽到此區域</p>
+                        <p class="upload-hint">支援格式: JPG, PNG, GIF</p>
+                        <input type="file" id="image-upload" accept="image/*" multiple hidden>
+                        <button class="btn btn-outline" onclick="document.getElementById('image-upload').click()">
+                            <i class="fas fa-folder-open"></i>
+                            選擇圖片
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 圖片預覽區域 -->
+                <div class="image-preview" id="image-preview" style="display: none;">
+                    <h4>已選擇的圖片:</h4>
+                    <div class="preview-list" id="preview-list"></div>
+                </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="resetForm()">
+                    <i class="fas fa-redo"></i>
+                    重設輸入
+                </button>
+                <button class="btn btn-primary" onclick="startAnalysis()" id="analyze-btn">
+                    <i class="fas fa-magic"></i>
+                    確認分析
+                </button>
+            </div>
+        </section>
+
+        <!-- 分析進度區域 -->
+        <section class="analysis-progress" id="analysis-progress" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cogs"></i>
+                        AI分析中...
+                    </h3>
+                </div>
+                <div class="progress-content">
+                    <div class="progress-steps">
+                        <div class="step active" id="step-1">
+                            <div class="step-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="step-text">識別投資標的</div>
+                        </div>
+                        <div class="step" id="step-2">
+                            <div class="step-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="step-text">分析投資敘事</div>
+                        </div>
+                        <div class="step" id="step-3">
+                            <div class="step-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="step-text">提取時間資訊</div>
+                        </div>
+                        <div class="step" id="step-4">
+                            <div class="step-icon">
+                                <i class="fas fa-smile"></i>
+                            </div>
+                            <div class="step-text">情緒分析</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部導航 -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-home"></i>
+            <span>首頁</span>
+        </a>
+        <a href="quick-record.html" class="nav-item active">
+            <i class="fas fa-edit"></i>
+            <span>記錄</span>
+        </a>
+        <a href="kol-analysis.html" class="nav-item">
+            <i class="fas fa-user-chart"></i>
+            <span>KOL</span>
+        </a>
+        <a href="investment-journal.html" class="nav-item">
+            <i class="fas fa-chart-line"></i>
+            <span>投資日誌</span>
+        </a>
+        <a href="settings.html" class="nav-item">
+            <i class="fas fa-cog"></i>
+            <span>設定</span>
+        </a>
+    </nav>
+
+    <script src="js/app.js"></script>
+    <script src="js/quick-record.js"></script>
+</body>
+</html> 
