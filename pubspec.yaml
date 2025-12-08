@@ -24,7 +24,7 @@ dependencies:
   dio: ^5.4.1
 
   # AI
-  google_generative_ai: ^0.2.2
+  google_generative_ai: ^0.4.7
 
   # Env
   flutter_dotenv: ^5.1.0
@@ -42,4 +42,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # 包含 .env 檔案作為 asset（用於開發階段）
+  # 注意：生產環境應使用其他方式管理環境變數
+  assets:
+    - .env
 

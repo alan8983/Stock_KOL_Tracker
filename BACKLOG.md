@@ -174,3 +174,32 @@
 - [ ] 作為​一​個​ [​整理者​]，​我​想​要​ [​點擊​線圖​上​的​標記​以​移轉​到​單篇文​檔]，​以​便​ ​[查​看​特定​文檔]。​
   - *Tags: User Story-MVP, Step 6.4*
 
+---
+
+## 🔐 API Keys Reminder (開發階段專用)
+
+**⚠️ 重要提醒：當前使用的 API Keys 僅限開發階段使用**
+
+**🚨 安全警告：請勿在版本控制系統中提交真實的 API Keys！**
+
+### 目前配置的 API Keys：
+1. **Tiingo API Token**: `YOUR_TIINGO_API_TOKEN`
+   - 免費額度：1000 次請求/天，500 檔股票/月
+   - 請在 `.env` 檔案中設定：`TIINGO_API_TOKEN=your_token_here`
+   
+2. **Gemini API Key**: `YOUR_GEMINI_API_KEY`
+   - 免費額度：15 次請求/分鐘，1500 次請求/天
+   - 請在 `.env` 檔案中設定：`GEMINI_API_KEY=your_key_here`
+
+### 📋 上線前必做事項：
+- [ ] 為正式環境申請新的 Tiingo API Token
+- [ ] 為正式環境申請新的 Gemini API Key
+- [ ] 更新 `.env` 檔案中的 API Keys
+- [ ] 確認 `.env` 已加入 `.gitignore`，避免洩漏至版控系統
+- [ ] **立即撤銷或刪除已洩露的 API Keys**（如果已提交到 git 歷史）
+- [ ] 檢查 git 歷史記錄，考慮使用 `git filter-branch` 或 BFG Repo-Cleaner 清理已洩露的憑證
+
+### 🔗 API Keys 申請連結：
+- Tiingo: https://www.tiingo.com/ → Sign Up → API Token
+- Google Gemini: https://aistudio.google.com/ → Get API Key
+

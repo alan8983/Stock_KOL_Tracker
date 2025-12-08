@@ -73,6 +73,18 @@ class AppDatabase extends _$AppDatabase {
           CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_prices_ticker_date 
           ON stock_prices(ticker, date);
         ''');
+        
+        // 建立預設 KOL（未分類）- 用於快速草稿
+        await customStatement('''
+          INSERT OR IGNORE INTO kols (id, name, createdAt) 
+          VALUES (1, '未分類', datetime('now'));
+        ''');
+        
+        // 建立預設 Stock（臨時）- 用於快速草稿
+        await customStatement('''
+          INSERT OR IGNORE INTO stocks (ticker, name, lastUpdated) 
+          VALUES ('TEMP', '臨時', datetime('now'));
+        ''');
       },
       onUpgrade: (Migrator m, int from, int to) async {
         // 未來版本升級時使用

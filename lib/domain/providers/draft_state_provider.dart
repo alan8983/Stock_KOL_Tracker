@@ -160,6 +160,24 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     }
   }
 
+  /// 儲存快速草稿（只有內容，使用預設值）
+  /// 用於自動暫存或手動暫存只有內容的草稿
+  Future<int?> saveQuickDraft(String content) async {
+    if (content.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      // 使用預設值建立快速草稿
+      final draftId = await _postRepository.createQuickDraft(content.trim());
+      return draftId;
+    } catch (e) {
+      // 記錄錯誤但不拋出，避免影響用戶體驗
+      print('儲存快速草稿失敗: $e');
+      return null;
+    }
+  }
+
   /// 重置狀態
   void reset() {
     _draftId = null;

@@ -7,7 +7,7 @@ class GeminiService {
 
   GeminiService({required String apiKey})
       : _model = GenerativeModel(
-          model: 'gemini-pro',
+          model: 'gemini-flash-latest', // 使用別名自動指向最新版本
           apiKey: apiKey,
         );
 
