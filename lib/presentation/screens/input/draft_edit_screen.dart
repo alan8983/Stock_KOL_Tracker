@@ -33,6 +33,14 @@ class _DraftEditScreenState extends ConsumerState<DraftEditScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(draftStateProvider.notifier).loadDraft(widget.draftId!);
       });
+    } else {
+      // 從快速輸入頁面進入時，立即同步內容
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final state = ref.read(draftStateProvider);
+        if (state.content.isNotEmpty && _contentController.text.isEmpty) {
+          _contentController.text = state.content;
+        }
+      });
     }
   }
 
@@ -93,8 +101,8 @@ class _DraftEditScreenState extends ConsumerState<DraftEditScreen> {
         });
       }
     } else {
-      // 新草稿時，從 state 同步（如果 controller 為空）
-      if (state.content.isNotEmpty && _contentController.text.isEmpty) {
+      // 從快速輸入頁面進入時，立即同步內容
+      if (state.content.isNotEmpty && _contentController.text != state.content) {
         _contentController.text = state.content;
       }
     }

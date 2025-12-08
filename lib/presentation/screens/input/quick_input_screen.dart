@@ -32,21 +32,52 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> {
     super.dispose();
   }
 
-  void _onAnalyze() {
-    final draftState = ref.read(draftStateProvider.notifier);
-    draftState.updateContent(_textController.text);
-    
-    // 導航到詳細編輯頁面
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const DraftEditScreen(),
-      ),
-    );
-    
-    // 觸發 AI 分析
-    Future.delayed(const Duration(milliseconds: 300), () {
-      draftState.analyzeContent();
-    });
+  Future<void> _onAnalyze() async {
+    if (_textController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('請輸入內容後再進行分析'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final draftState = ref.read(draftStateProvider.notifier);
+      
+      // 先更新狀態
+      draftState.updateContent(_textController.text.trim());
+      
+      // 確保狀態已更新後再導航
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // 導航到詳細編輯頁面
+      if (mounted) {
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const DraftEditScreen(),
+          ),
+        );
+        
+        // 導航成功後觸發 AI 分析
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            draftState.analyzeContent();
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('導航失敗: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override
