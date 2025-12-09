@@ -41,7 +41,41 @@ flutter run
 
 ## 📊 Git 推送進展記錄
 
-### 🎯 最新進展 (2025-12-09)
+### 🎯 最新進展 (2025-12-10)
+
+#### Commit: `00a95b8` - 更新 README 文件
+**日期**: 2025-12-10  
+**主要變更**:
+- ✅ 添加新的文件連結（`IMPLEMENTATION_REPORT.md`、`NAVIGATION_TEST_SUMMARY.md`）
+- ✅ 更新已實現功能列表（導覽架構、KOL 管理、股票管理、文檔管理）
+- ✅ 更新專案結構文件，包含詳細的目錄樹
+- ✅ 更新專案進度統計，標記導覽架構重構完成
+
+---
+
+#### Commit: `5b5390c` - 重構導覽架構並添加新畫面
+**日期**: 2025-12-10  
+**主要變更**:
+- ✅ 實現 4 個底部 Tab 導覽架構（快速輸入、KOL、投資標的、更多）
+- ✅ 新增 `KOLListScreen` 與搜尋功能
+- ✅ 新增 `StockListScreen` 與搜尋功能
+- ✅ 新增 `MoreScreen` 選單頁面
+- ✅ 新增 `PostDetailScreen` 與 2 個子頁籤
+- ✅ 增強 `KOLViewScreen` 和 `StockViewScreen`，各包含 3 個子頁籤
+- ✅ 新增 `kol_list_provider` 和 `stock_list_provider` 進行狀態管理
+- ✅ 改善草稿列表流程，使用 Navigator 返回值傳遞資料
+- ✅ 更新 Repository 層，新增搜尋和 `getById` 方法
+- ✅ 新增實施報告文件（`IMPLEMENTATION_REPORT.md`、`NAVIGATION_TEST_SUMMARY.md`）
+
+**架構改進**:
+- 完整的底部導覽架構，支援 4 個主要功能區塊
+- 統一的列表頁面設計模式（搜尋 + 卡片列表）
+- 統一的詳情頁面設計模式（凍結 Header + 子頁籤）
+- 完善的狀態管理架構（Provider 模式）
+
+---
+
+### 📅 近期進展 (2025-12-09)
 
 #### Commit: `294de96` - 測試腳本、安全通知與 Commit Log
 **日期**: 2025-12-09  
