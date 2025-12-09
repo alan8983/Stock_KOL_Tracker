@@ -152,8 +152,6 @@ flutter run
 | ⏳ 待處理 | 6 | 54.5% |
 | **總計** | **11** | **100%** |
 
-> **注意**: 此統計基於 Agent Plans。實際上已完成更多功能，包括導覽架構重構、KOL/Stock 列表與詳情頁面等。
-
 ### 已完成階段
 
 1. ✅ **Phase 1**: 專案初始化與資料庫架構
@@ -165,32 +163,28 @@ flutter run
    - TiingoService 實作（股價資料獲取與快取）
    - GeminiService 實作（AI 內容分析）
 
-3. ✅ **Phase 3**: 核心功能 - 輸入流
-   - UI 輸入頁面：快速輸入頁面
-   - 草稿管理：自動暫存、列表、選擇、編輯
-   - AI 分析與導航流程
-
-4. ✅ **Phase 4**: 導覽架構重構
-   - 4個底部導覽Tab架構
-   - KOL 列表與詳情頁面
-   - 投資標的列表與詳情頁面
-   - 文檔詳細頁面
-   - 更多選單頁面
+3. ✅ **導覽架構重構** (2024-12-08)
+   - 實現 4 個底部 Tab 導覽架構
+   - 完成所有主要頁面（快速輸入、KOL、投資標的、更多）
+   - 實現 KOL 列表、股票列表、文檔列表功能
+   - 完成導航流程測試與驗證
 
 ### 進行中階段
 
-5. 🔄 **Phase 5**: 核心功能 - 分析與 UI
-   - **KOL Overview 內容：進行中** ⬅️ 當前焦點
-   - K 線圖與標記繪製：待處理
-   - 回測邏輯（勝率計算）：待處理
+4. 🔄 **Phase 3**: 核心功能 - 輸入流
+   - UI 輸入頁面：✅ 已完成
+   - **自動填入邏輯：進行中** ⬅️ 當前焦點
+   - Review 與儲存：待處理
 
 ### 待處理階段
 
-6. ⏳ **Phase 6**: 優化與完善
+5. ⏳ **Phase 4**: 核心功能 - 分析與 UI
+   - K 線圖與標記繪製
+   - 回測邏輯（勝率計算）
+
+6. ⏳ **Phase 5**: 優化與完善
    - 錯誤處理
    - UI 優化
-   - 性能優化
-   - 書籤功能後端實作
 
 ---
 
@@ -198,26 +192,21 @@ flutter run
 
 ### 已實現功能
 
-- ✅ **導覽架構**: 4個底部導覽Tab（快速輸入、KOL、投資標的、更多）
 - ✅ **快速輸入**: 支援文字輸入與自動暫存
-- ✅ **草稿管理**: 自動暫存、手動儲存、草稿列表、草稿選擇與編輯
+- ✅ **草稿管理**: 自動暫存、手動儲存、草稿列表
 - ✅ **AI 分析**: 整合 Gemini AI 進行內容分析
-- ✅ **KOL 管理**: KOL 列表、搜尋、詳情頁面（3個子頁籤：Overview、勝率統計、簡介）
-- ✅ **投資標的管理**: 股票列表、搜尋、詳情頁面（3個子頁籤：文檔清單、市場敘事、K線圖）
-- ✅ **文檔詳情**: 文檔詳細頁面（2個子頁籤：主文內容、K線圖）
-- ✅ **更多選單**: 書籤管理、設定、關於等功能入口
 - ✅ **資料庫**: 本地 SQLite 資料儲存
 - ✅ **API 整合**: Tiingo (股價) + Gemini (AI 分析)
-- ✅ **狀態管理**: Riverpod 狀態管理架構，支援列表狀態保持
+- ✅ **狀態管理**: Riverpod 狀態管理架構
+- ✅ **導覽架構**: 4 個底部 Tab 導覽（快速輸入、KOL、投資標的、更多）
+- ✅ **KOL 管理**: KOL 列表、詳情頁面、搜尋功能
+- ✅ **投資標的管理**: 股票列表、詳情頁面、搜尋功能
+- ✅ **文檔管理**: 文檔列表與詳情頁面
 
 ### 開發中功能
 
 - 🔄 **自動填入**: AI 分析結果自動填入表單
-- 🔄 **KOL Overview**: 依投資標的分組顯示文檔
-- 🔄 **KOL 勝率統計**: 各標的勝率計算與顯示
-- 🔄 **Stock 文檔清單**: 顯示所有相關文檔
-- 🔄 **市場敘事**: AI 彙整論點（Release 01）
-- 🔄 **K 線圖整合**: 股價走勢圖與文檔標記顯示
+- 🔄 **預覽功能**: 文檔發布前預覽
 
 ### 計劃功能
 
@@ -242,24 +231,24 @@ flutter run
 
 ```
 lib/
-├── core/           # 核心工具類
-│   └── utils/      # 工具函數（日期時間格式化、相對時間解析）
-├── data/           # 資料層
-│   ├── database/   # 資料庫定義
-│   ├── models/     # 資料模型
-│   ├── repositories/# 資料存取層（KOL、Post、Stock）
-│   └── services/   # 外部服務整合（Tiingo、Gemini）
-├── domain/         # 業務邏輯層
-│   └── providers/  # Riverpod Providers（狀態管理）
-└── presentation/   # UI 層
-    ├── screens/    # 頁面
-    │   ├── home/   # 主頁（底部導覽容器）
-    │   ├── input/  # 輸入相關（快速輸入、草稿列表、編輯、預覽）
-    │   ├── kol/    # KOL 相關（列表、詳情）
-    │   ├── stocks/ # 投資標的相關（列表、詳情）
-    │   ├── posts/  # 文檔相關（列表、詳情）
-    │   └── more/   # 更多選單
-    └── widgets/    # 可重用組件
+├── core/              # 核心工具類
+│   └── utils/         # 工具函數（日期時間格式化、相對時間解析）
+├── data/              # 資料層
+│   ├── database/      # 資料庫定義（Drift）
+│   ├── models/        # 資料模型
+│   ├── repositories/  # 資料存取層（KOL, Post, Stock）
+│   └── services/      # 外部服務整合（Tiingo, Gemini）
+├── domain/            # 業務邏輯層
+│   └── providers/     # Riverpod Providers（狀態管理）
+└── presentation/      # UI 層
+    ├── screens/        # 頁面
+    │   ├── home/      # 主頁（底部導覽容器）
+    │   ├── input/     # 輸入相關（快速輸入、草稿列表、編輯、預覽）
+    │   ├── kol/       # KOL 相關（列表、詳情）
+    │   ├── stocks/    # 股票相關（列表、詳情）
+    │   ├── posts/     # 文檔相關（列表、詳情）
+    │   └── more/      # 更多功能
+    └── widgets/        # 可重用組件
 ```
 
 ---
@@ -267,11 +256,11 @@ lib/
 ## 📝 相關文件
 
 - [COMMIT_LOG.md](./COMMIT_LOG.md) - 詳細的 Commit 記錄與功能說明
-- [IMPLEMENTATION_REPORT.md](./IMPLEMENTATION_REPORT.md) - 導覽架構重構實施報告
-- [NAVIGATION_TEST_SUMMARY.md](./NAVIGATION_TEST_SUMMARY.md) - 導航測試總結
 - [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) - 安全注意事項與 API Keys 管理
 - [BACKLOG.md](./BACKLOG.md) - 產品待辦清單與用戶故事
 - [PROJECT_MASTER_PLAN.md](./PROJECT_MASTER_PLAN.md) - 專案主計劃文件
+- [IMPLEMENTATION_REPORT.md](./IMPLEMENTATION_REPORT.md) - APP 導覽架構重構實施報告
+- [NAVIGATION_TEST_SUMMARY.md](./NAVIGATION_TEST_SUMMARY.md) - 導航架構測試總結
 - [.cursor/plans/](./.cursor/plans/) - Agent 執行計劃
 
 ---
