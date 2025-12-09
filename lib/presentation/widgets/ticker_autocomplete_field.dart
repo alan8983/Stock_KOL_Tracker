@@ -22,20 +22,8 @@ class TickerAutocompleteField extends ConsumerStatefulWidget {
 
 class _TickerAutocompleteFieldState
     extends ConsumerState<TickerAutocompleteField> {
-  late final TextEditingController _controller;
+  TextEditingController? _controller;
   List<Stock> _suggestions = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   Future<void> _searchStocks(String query) async {
     if (query.isEmpty) {
@@ -81,7 +69,7 @@ class _TickerAutocompleteFieldState
       },
       displayStringForOption: (option) => option.ticker,
       onSelected: (option) {
-        _controller.text = option.ticker;
+        _controller?.text = option.ticker;
         widget.onChanged?.call(option.ticker);
       },
       optionsViewBuilder: (context, onSelected, options) {

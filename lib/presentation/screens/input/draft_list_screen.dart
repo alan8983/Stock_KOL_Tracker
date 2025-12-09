@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/draft_list_provider.dart';
-import '../../../domain/providers/draft_state_provider.dart';
+import '../../../data/models/draft_form_state.dart';
+import '../../../data/database/database.dart';
 import '../../widgets/draft_card.dart';
-import '../input/draft_edit_screen.dart';
 
 /// 草稿列表頁面 (Step 2)
 /// 草稿一覽、滑動刪除、長按多選刪除
+/// 點擊草稿會返回QuickInputScreen並填入內容
 class DraftListScreen extends ConsumerStatefulWidget {
   const DraftListScreen({super.key});
 
@@ -35,6 +36,18 @@ class _DraftListScreenState extends ConsumerState<DraftListScreen> {
         _selectedDraftIds.remove(draftId);
       }
     });
+  }
+
+  /// 將Post轉換為DraftFormState並返回
+  void _selectDraft(Post draft) {
+    final draftFormState = DraftFormState(
+      content: draft.content,
+      ticker: draft.stockTicker,
+      sentiment: draft.sentiment,
+      kolId: draft.kolId,
+      postedAt: draft.postedAt,
+    );
+    Navigator.of(context).pop(draftFormState);
   }
 
   Future<void> _deleteSelected() async {
@@ -138,15 +151,7 @@ class _DraftListScreenState extends ConsumerState<DraftListScreen> {
                 onTap: _isSelectionMode
                     ? () => _toggleSelection(
                         draft.id, !_selectedDraftIds.contains(draft.id))
-                    : () {
-                        // 載入草稿到編輯頁面
-                        ref.read(draftStateProvider.notifier).loadDraft(draft.id);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => DraftEditScreen(draftId: draft.id),
-                          ),
-                        );
-                      },
+                    : () => _selectDraft(draft), // 選擇草稿並返回
                 onDelete: () async {
                   try {
                     await ref

@@ -31,4 +31,12 @@ class KOLRepository {
   Future<void> deleteKOL(int id) async {
     await (_db.delete(_db.kOLs)..where((tbl) => tbl.id.equals(id))).go();
   }
+
+  /// 搜尋 KOL（依名稱模糊搜尋）
+  Future<List<KOL>> searchKOLs(String query) async {
+    return await (_db.select(_db.kOLs)
+          ..where((tbl) => tbl.name.like('%$query%'))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        .get();
+  }
 }

@@ -63,16 +63,6 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
-      },
-      beforeOpen: (details) async {
-        // 啟用 Foreign Key 約束
-        await customStatement('PRAGMA foreign_keys = ON;');
-        
-        // 為 StockPrices 添加複合唯一索引 (ticker, date)
-        await customStatement('''
-          CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_prices_ticker_date 
-          ON stock_prices(ticker, date);
-        ''');
         
         // 建立預設 KOL（未分類）- 用於快速草稿
         await customStatement('''
@@ -85,6 +75,42 @@ class AppDatabase extends _$AppDatabase {
           INSERT OR IGNORE INTO stocks (ticker, name, lastUpdated) 
           VALUES ('TEMP', '臨時', datetime('now'));
         ''');
+        
+        // 為 StockPrices 添加複合唯一索引 (ticker, date)
+        await customStatement('''
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_prices_ticker_date 
+          ON stock_prices(ticker, date);
+        ''');
+      },
+      beforeOpen: (details) async {
+        // 啟用 Foreign Key 約束
+        await customStatement('PRAGMA foreign_keys = ON;');
+        
+        // 為 StockPrices 添加複合唯一索引 (ticker, date)
+        await customStatement('''
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_prices_ticker_date 
+          ON stock_prices(ticker, date);
+        ''');
+        
+        // 確保預設數據存在（僅當表已存在時）
+        // 如果表不存在，INSERT 會失敗，我們捕獲錯誤即可
+        try {
+          await customStatement('''
+            INSERT OR IGNORE INTO kols (id, name, createdAt) 
+            VALUES (1, '未分類', datetime('now'));
+          ''');
+        } catch (e) {
+          // 如果表不存在，忽略錯誤（將在 onCreate 中處理）
+        }
+        
+        try {
+          await customStatement('''
+            INSERT OR IGNORE INTO stocks (ticker, name, lastUpdated) 
+            VALUES ('TEMP', '臨時', datetime('now'));
+          ''');
+        } catch (e) {
+          // 如果表不存在，忽略錯誤（將在 onCreate 中處理）
+        }
       },
       onUpgrade: (Migrator m, int from, int to) async {
         // 未來版本升級時使用
