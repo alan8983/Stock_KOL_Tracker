@@ -142,40 +142,77 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '貼上或輸入內容',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                maxLines: null,
-                expands: true,
-                decoration: const InputDecoration(
-                  hintText: '請貼上或輸入 KOL 發文內容...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(16),
-                ),
-                textAlignVertical: TextAlignVertical.top,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _hasText ? _onAnalyze : null,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('分析'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ],
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenHeight = constraints.maxHeight;
+          final initialHeight = screenHeight / 3;
+          
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _hasText
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _textController,
+                        maxLines: null,
+                        minLines: 1,
+                        decoration: const InputDecoration(
+                          hintText: '請貼上或輸入 KOL 發文內容...',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                        textAlignVertical: TextAlignVertical.top,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _onAnalyze,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('分析'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: initialHeight,
+                            minHeight: initialHeight,
+                          ),
+                          child: TextField(
+                            controller: _textController,
+                            maxLines: null,
+                            expands: true,
+                            decoration: const InputDecoration(
+                              hintText: '請貼上或輸入 KOL 發文內容...',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.all(16),
+                            ),
+                            textAlignVertical: TextAlignVertical.top,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.auto_awesome),
+                          label: const Text('分析'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          );
+        },
       ),
     );
   }

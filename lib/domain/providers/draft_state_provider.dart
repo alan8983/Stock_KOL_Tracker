@@ -71,20 +71,29 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
 
   /// 呼叫 Gemini 分析主文
   Future<void> analyzeContent() async {
-    if (state.content.isEmpty) return;
+    if (state.content.isEmpty) {
+      print('⚠️ DraftStateNotifier: 內容為空，無法分析');
+      return;
+    }
 
+    print('🔄 DraftStateNotifier: 開始AI分析...');
     state = state.copyWith(isAnalyzing: true, errorMessage: null);
 
     try {
       final result = await _geminiService.analyzeText(state.content);
       
+      print('📊 DraftStateNotifier: 收到分析結果 - 情緒: ${result.sentiment}, 股票: ${result.tickers}');
+      
       // 自動填入 AI 分析結果
       String? ticker;
       if (result.tickers.isNotEmpty) {
         ticker = result.tickers.first;
+        print('📈 DraftStateNotifier: 檢查股票 $ticker 是否存在於資料庫...');
+        
         // 確保股票存在於資料庫中
         final stock = await _stockRepository.getStockByTicker(ticker);
         if (stock == null) {
+          print('➕ DraftStateNotifier: 自動建立股票記錄: $ticker');
           // 自動建立股票記錄
           await _stockRepository.upsertStock(
             StocksCompanion.insert(
@@ -92,6 +101,8 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
               lastUpdated: DateTime.now(),
             ),
           );
+        } else {
+          print('✓ DraftStateNotifier: 股票 $ticker 已存在');
         }
       }
 
@@ -101,10 +112,27 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
         ticker: ticker ?? state.ticker,
         sentiment: result.sentiment,
       );
-    } catch (e) {
+      
+      print('✅ DraftStateNotifier: AI分析完成並已更新狀態');
+    } catch (e, stackTrace) {
+      print('❌ DraftStateNotifier: AI分析失敗');
+      print('   錯誤: $e');
+      print('   Stack trace: $stackTrace');
+      
+      String errorMessage;
+      if (e.toString().contains('API key')) {
+        errorMessage = 'AI 分析失敗: API金鑰無效，請檢查.env設定';
+      } else if (e.toString().contains('network') || e.toString().contains('timeout')) {
+        errorMessage = 'AI 分析失敗: 網路連線問題，請檢查網路後重試';
+      } else if (e.toString().contains('quota')) {
+        errorMessage = 'AI 分析失敗: API配額已用完';
+      } else {
+        errorMessage = 'AI 分析失敗: ${e.toString()}';
+      }
+      
       state = state.copyWith(
         isAnalyzing: false,
-        errorMessage: 'AI 分析失敗: $e',
+        errorMessage: errorMessage,
       );
     }
   }

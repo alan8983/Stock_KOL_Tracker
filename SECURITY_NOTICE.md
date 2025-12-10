@@ -4,10 +4,10 @@
 
 在專案歷史記錄中發現硬編碼的真實 API Keys 已被提交到版本控制系統。這些憑證可能已被他人存取，需要立即處理。
 
-## 已洩露的 API Keys
+## 已洩露的 API Keys（已處理）
 
-1. **Tiingo API Token**: `2037c488ea53d7574e5036107f5c0dd1aa9810f0`
-2. **Gemini API Key**: `AIzaSyBcjWsDJuzp78nLtgP4dVOc2oKgW84fcDQ`
+1. **Tiingo API Token**: `2037c4...` ✅ **已更換**（已撤銷）
+2. **Gemini API Key**: `[已撤銷的舊 Key]` ✅ **已撤銷並更換**（已撤銷）
 
 ## 立即行動步驟
 
@@ -45,8 +45,9 @@ git filter-branch --force --index-filter \
 ```bash
 # 1. 安裝 BFG Repo-Cleaner
 # 2. 建立替換檔案 replace.txt，內容為：
-2037c488ea53d7574e5036107f5c0dd1aa9810f0==REMOVED_TIINGO_TOKEN
-AIzaSyBcjWsDJuzp78nLtgP4dVOc2oKgW84fcDQ==REMOVED_GEMINI_KEY
+# 注意：實際的 API Keys 已從此文件中移除，僅保留部分識別字元
+# 2037c4...==REMOVED_TIINGO_TOKEN
+# [已撤銷的 Gemini API Key]==REMOVED_GEMINI_KEY
 
 # 3. 執行清理
 java -jar bfg.jar --replace-text replace.txt
@@ -76,14 +77,43 @@ git push --force --all
 1. ✅ `.env` 檔案已在 `.gitignore` 中
 2. ✅ 所有測試檔案改為從環境變數讀取 API Keys
 3. ✅ `BACKLOG.md` 中不再包含真實的 API Keys
+4. ✅ **已建立 Git pre-commit hook** - 自動檢測並阻止 API Keys 被提交
+5. ✅ 已更換所有洩露的 API Keys
+
+#### Git Pre-commit Hook 使用說明：
+
+專案已自動設置 pre-commit hook（位於 `.git/hooks/pre-commit`），會在每次提交前檢查：
+
+- 是否意外將 `.env` 檔案加入提交
+- 程式碼中是否包含 Gemini API Key 格式（以 `AIza` 開頭）
+- 程式碼中是否包含其他 API Key 模式
+
+**如果檢測到敏感資訊，提交會被自動阻止。**
+
+若需要繞過檢查（僅在確定安全的情況下）：
+```bash
+git commit --no-verify
+```
+
+**⚠️ 警告**：除非您非常確定沒有敏感資訊，否則不建議使用 `--no-verify`。
+
+#### 如何在其他開發者的電腦上啟用 hook：
+
+當其他開發者 clone 此專案後，請執行：
+```bash
+chmod +x .git/hooks/pre-commit
+```
+
+或者將 hook 複製到正確位置（如果 hook 檔案存在於專案中）。
 
 #### 未來開發建議：
 1. **永遠不要**在程式碼中硬編碼 API Keys
 2. **永遠不要**將包含真實 API Keys 的檔案提交到版本控制
 3. 使用 `.env` 檔案管理敏感資訊
 4. 定期檢查 Git 歷史中是否有敏感資訊
-5. 使用 Git hooks 或 CI/CD 工具自動檢查敏感資訊
+5. 信任 pre-commit hook 的檢查，不要輕易使用 `--no-verify`
 6. 考慮使用密碼管理工具（如 1Password, Bitwarden）管理 API Keys
+7. 定期更換 API Keys（建議每 3-6 個月）
 
 ### 5. 監控異常活動
 
@@ -100,5 +130,10 @@ git push --force --all
 
 ---
 
-**最後更新**: 2024-12-XX  
-**狀態**: 🔴 需要立即處理
+**最後更新**: 2024-12-10  
+**狀態**: 🟢 已處理並實施防護措施
+
+### 更新紀錄：
+- 2024-12-10: 已撤銷並更換洩露的 API Keys
+- 2024-12-10: 已建立 Git pre-commit hook 防止未來洩露
+- 2024-12-10: 驗證新 API Keys 正常運作

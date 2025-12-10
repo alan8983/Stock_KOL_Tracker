@@ -7,29 +7,64 @@ class GeminiService {
 
   GeminiService({required String apiKey})
       : _model = GenerativeModel(
-          model: 'gemini-flash-latest', // 使用別名自動指向最新版本
+          model: 'gemini-flash-latest', // 免費層支援的最新 Flash 模型
           apiKey: apiKey,
+          generationConfig: GenerationConfig(
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          ),
         );
 
   Future<AnalysisResult> analyzeText(String text) async {
+    if (text.trim().isEmpty) {
+      print('⚠️ GeminiService: 輸入文字為空');
+      return AnalysisResult.empty();
+    }
+
     try {
+      print('🤖 GeminiService: 開始分析文字 (長度: ${text.length})');
+      
       final prompt = _buildPrompt(text);
       final content = [Content.text(prompt)];
+      
       final response = await _model.generateContent(content);
+      
+      print('✅ GeminiService: 收到回應');
 
       if (response.text == null || response.text!.isEmpty) {
+        print('⚠️ GeminiService: 回應內容為空');
         return AnalysisResult.empty();
       }
 
+      print('📝 GeminiService: 原始回應長度: ${response.text!.length}');
+
       // Extract JSON from response (handle markdown code blocks)
       final jsonString = _extractJson(response.text!);
+      print('📋 GeminiService: 提取的JSON: $jsonString');
+      
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+      final result = AnalysisResult.fromJson(jsonData);
+      
+      print('✅ GeminiService: 分析完成 - 情緒: ${result.sentiment}, 股票: ${result.tickers}');
 
-      return AnalysisResult.fromJson(jsonData);
-    } catch (e) {
-      // Log error in production, return default for now
-      print('GeminiService error: $e');
+      return result;
+    } on GenerativeAIException catch (e) {
+      // Gemini API 特定錯誤
+      print('❌ GeminiService API錯誤: ${e.message}');
+      print('   錯誤類型: ${e.runtimeType}');
+      rethrow; // 重新拋出以便上層處理
+    } on FormatException catch (e) {
+      // JSON 解析錯誤
+      print('❌ GeminiService JSON解析錯誤: $e');
+      print('   請檢查API回應格式');
       return AnalysisResult.empty();
+    } catch (e, stackTrace) {
+      // 其他未預期的錯誤
+      print('❌ GeminiService 未知錯誤: $e');
+      print('   Stack trace: $stackTrace');
+      rethrow; // 重新拋出以便上層處理
     }
   }
 

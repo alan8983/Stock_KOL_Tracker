@@ -13,6 +13,20 @@ Stock KOL Tracker 是一個本地部署的移動應用程式，專為忙碌的�
 - Dart SDK
 - Android Studio / Xcode (用於移動端開發)
 
+### 🔐 API Keys 申請
+
+#### 1. Gemini API Key
+1. 前往 [Google AI Studio](https://aistudio.google.com/apikey)
+2. 登入 Google 帳號
+3. 點選 "Create API Key"
+4. 複製生成的 API Key
+
+#### 2. Tiingo API Token
+1. 前往 [Tiingo](https://www.tiingo.com/)
+2. 註冊並登入帳號
+3. 在 Dashboard 中找到 API Token
+4. 複製您的 Token
+
 ### 安裝步驟
 
 1. **克隆專案**
@@ -34,7 +48,24 @@ cp env.example .env
 # TIINGO_API_TOKEN=your_tiingo_token
 ```
 
-4. **執行應用程式**
+4. **設置 Git Hooks（重要！防止 API Key 洩露）**
+
+**Linux/Mac:**
+```bash
+bash scripts/setup-git-hooks.sh
+```
+
+**Windows:**
+```bash
+scripts\setup-git-hooks.bat
+```
+
+或手動設置：
+```bash
+chmod +x .git/hooks/pre-commit
+```
+
+5. **執行應用程式**
 ```bash
 flutter run
 ```
@@ -287,25 +318,60 @@ lib/
 
 ---
 
+## 🔐 安全注意事項
+
+### API Keys 保護
+
+本專案已實施多層安全措施來保護 API Keys：
+
+1. **`.env` 檔案隔離**
+   - 所有 API Keys 都存放在 `.env` 檔案中
+   - `.env` 已加入 `.gitignore`，不會被提交到 Git
+
+2. **Git Pre-commit Hook**
+   - 自動檢測並阻止 `.env` 檔案被提交
+   - 自動掃描程式碼中的 API Key 模式
+   - 發現敏感資訊時會阻止提交並顯示警告
+
+3. **環境變數使用**
+   - 所有程式碼都透過 `flutter_dotenv` 讀取環境變數
+   - 永不硬編碼 API Keys
+
+### 設置 Git Hooks
+
+**首次 clone 專案後，務必執行：**
+
+**Linux/Mac:**
+```bash
+bash scripts/setup-git-hooks.sh
+```
+
+**Windows:**
+```bash
+scripts\setup-git-hooks.bat
+```
+
+### ⚠️ 重要提醒
+
+- **永遠不要**在程式碼中硬編碼 API Keys
+- **永遠不要**使用 `git commit --no-verify` 來繞過安全檢查（除非您非常確定）
+- 如果不小心洩露了 API Key，請立即：
+  1. 撤銷舊的 API Key
+  2. 申請新的 API Key
+  3. 更新 `.env` 檔案
+  4. 參考 [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) 進行完整處理
+
+---
+
 ## 📝 相關文件
 
 - [COMMIT_LOG.md](./COMMIT_LOG.md) - 詳細的 Commit 記錄與功能說明
-- [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) - 安全注意事項與 API Keys 管理
+- [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) - 安全注意事項與 API Keys 洩露處理指南
 - [BACKLOG.md](./BACKLOG.md) - 產品待辦清單與用戶故事
 - [PROJECT_MASTER_PLAN.md](./PROJECT_MASTER_PLAN.md) - 專案主計劃文件
 - [IMPLEMENTATION_REPORT.md](./IMPLEMENTATION_REPORT.md) - APP 導覽架構重構實施報告
 - [NAVIGATION_TEST_SUMMARY.md](./NAVIGATION_TEST_SUMMARY.md) - 導航架構測試總結
 - [.cursor/plans/](./.cursor/plans/) - Agent 執行計劃
-
----
-
-## 🔐 安全注意事項
-
-⚠️ **重要**: 請勿在程式碼中硬編碼 API Keys！
-
-- 所有 API Keys 應存放在 `.env` 檔案中
-- `.env` 檔案已加入 `.gitignore`
-- 請參考 `SECURITY_NOTICE.md` 了解詳細的安全指南
 
 ---
 

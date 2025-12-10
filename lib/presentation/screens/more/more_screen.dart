@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'diagnostic_screen.dart';
 
 /// 更多/設定頁面
 /// 包含書籤管理、設定、關於等選項
@@ -14,6 +15,20 @@ class MoreScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.bug_report),
+            title: const Text('系統診斷'),
+            subtitle: const Text('檢查草稿功能和資料庫狀態'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const DiagnosticScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.bookmark),
             title: const Text('書籤管理'),
