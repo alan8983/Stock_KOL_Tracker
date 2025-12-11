@@ -72,7 +72,33 @@ flutter run
 
 ## 📊 Git 推送進展記錄
 
-### 🎯 最新進展 (2025-12-10)
+### 🎯 最新進展 (2025-12-11)
+
+#### Commit: `1176c24` - 更新 README 並強化安全機制
+**日期**: 2025-12-11  
+**主要變更**:
+- ✅ 新增詳細的 API Keys 申請指南（Gemini 和 Tiingo）
+- ✅ 新增 Git Hooks 設置說明與腳本（`setup-git-hooks.sh` 和 `setup-git-hooks.bat`）
+- ✅ 強化安全注意事項專區，包含多層 API Keys 保護措施
+- ✅ 新增 AI 分析功能修復總結文件（`AI_ANALYSIS_FIX_SUMMARY.md`）
+- ✅ 新增診斷功能（`diagnostic_screen.dart`、`diagnostic_repository.dart`）
+- ✅ 改善 Gemini 服務的錯誤處理與日誌輸出
+- ✅ 增強草稿編輯畫面功能
+- ✅ 遮蔽文件中的舊 API Keys（已撤銷的 Keys）
+
+**安全改進**:
+- 實施 Git Pre-commit Hook 自動檢測敏感資訊
+- 提供跨平台設置腳本（Linux/Mac/Windows）
+- 完善的安全文檔與最佳實踐指南
+
+**功能改進**:
+- 新增診斷工具用於 API 連接測試
+- 改善 AI 分析的錯誤處理機制
+- 優化草稿編輯流程
+
+---
+
+### 📅 近期進展 (2025-12-10)
 
 #### Commit: `00a95b8` - 更新 README 文件
 **日期**: 2025-12-10  
@@ -267,6 +293,8 @@ flutter run
 - ✅ **KOL 管理**: KOL 列表、詳情頁面、搜尋功能
 - ✅ **投資標的管理**: 股票列表、詳情頁面、搜尋功能
 - ✅ **文檔管理**: 文檔列表與詳情頁面
+- ✅ **診斷工具**: API 連接測試與診斷功能
+- ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
 
 ### 開發中功能
 
