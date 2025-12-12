@@ -72,7 +72,40 @@ flutter run
 
 ## 📊 Git 推送進展記錄
 
-### 🎯 最新進展 (2025-12-11)
+### 🎯 最新進展 (2025-12-13)
+
+#### 新功能：AI 辨識 KOL 與發文時間
+**日期**: 2025-12-13  
+**主要變更**:
+- ✅ **AI 自動辨識 KOL 名稱** - 從文章內容自動提取 KOL 名稱
+- ✅ **AI 自動辨識發文時間** - 支援相對時間（如「3小時前」）和絕對時間（如「12月11日下午2:02」）
+- ✅ **時間解析工具** (`time_parser.dart`) - 智能解析各種時間格式
+- ✅ **KOL 模糊匹配工具** (`kol_matcher.dart`) - 自動匹配資料庫中的 KOL
+- ✅ **視覺 Highlight 效果** - 必填欄位未填寫時顯示紅色脈衝邊框提醒
+- ✅ **自動填入功能** - AI 分析結果自動填入對應欄位（KOL、時間、投資標的）
+- ✅ **更新 Gemini 模型** - 使用 `gemini-2.5-flash`（開發階段固定使用）
+- ✅ **新增分析結果畫面** (`analysis_result_screen.dart`) - 顯示 AI 分析結果並自動填入
+- ✅ **新增多個 Providers** - `bookmark_provider`, `kol_posts_provider`, `post_list_provider`, `stock_posts_provider`, `stock_price_provider`
+- ✅ **新增 Widgets** - `post_card.dart`, `pulsing_border_card.dart`, `stock_chart_widget.dart`
+- ✅ **新增測試** - 完整的單元測試（20/20 通過）
+
+**技術改進**:
+- 擴展 `AnalysisResult` 模型，新增 `kolName` 和 `postedAtText` 欄位
+- 增強 Gemini Prompt 以支援 KOL 和時間辨識
+- 實現智能時間解析（支援中文日期格式）
+- 實現 KOL 模糊匹配算法（Levenshtein 距離）
+
+**UI 改進**:
+- 新增脈衝邊框視覺效果提醒必填欄位
+- 優化分析結果顯示與自動填入流程
+- 改善用戶體驗，減少手動輸入需求
+
+**相關文件**:
+- [AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md](./AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md) - 完整實作總結
+
+---
+
+### 📅 近期進展 (2025-12-11)
 
 #### Commit: `1176c24` - 更新 README 並強化安全機制
 **日期**: 2025-12-11  
@@ -163,7 +196,7 @@ flutter run
 
 **技術改進**:
 - 改善環境變數載入與錯誤處理機制
-- 更新 Gemini 模型為 `gemini-flash-latest`
+- 更新 Gemini 模型為 `gemini-2.5-flash` (開發階段固定使用)
 - 升級 `google_generative_ai` 套件至 `0.4.7`
 
 ---
@@ -255,8 +288,8 @@ flutter run
 
 | 狀態 | 數量 | 百分比 |
 |------|------|--------|
-| ✅ 已完成 | 4 | 36.4% |
-| 🔄 進行中 | 1 | 9.1% |
+| ✅ 已完成 | 5 | 45.5% |
+| 🔄 進行中 | 0 | 0% |
 | ⏳ 待處理 | 6 | 54.5% |
 | **總計** | **11** | **100%** |
 
@@ -279,9 +312,12 @@ flutter run
 
 ### 進行中階段
 
-4. 🔄 **Phase 3**: 核心功能 - 輸入流
+4. ✅ **Phase 3**: 核心功能 - 輸入流
    - UI 輸入頁面：✅ 已完成
-   - **自動填入邏輯：進行中** ⬅️ 當前焦點
+   - **自動填入邏輯：✅ 已完成** (2025-12-13)
+     - AI 自動辨識 KOL 名稱與發文時間
+     - 智能時間解析與 KOL 模糊匹配
+     - 自動填入對應欄位
    - Review 與儲存：待處理
 
 ### 待處理階段
@@ -303,6 +339,9 @@ flutter run
 - ✅ **快速輸入**: 支援文字輸入與自動暫存
 - ✅ **草稿管理**: 自動暫存、手動儲存、草稿列表
 - ✅ **AI 分析**: 整合 Gemini AI 進行內容分析
+- ✅ **AI 自動辨識**: KOL 名稱與發文時間自動辨識與填入
+- ✅ **時間解析**: 智能解析相對時間和中文日期格式
+- ✅ **KOL 匹配**: 模糊匹配資料庫中的 KOL
 - ✅ **資料庫**: 本地 SQLite 資料儲存
 - ✅ **API 整合**: Tiingo (股價) + Gemini (AI 分析)
 - ✅ **狀態管理**: Riverpod 狀態管理架構
@@ -312,6 +351,7 @@ flutter run
 - ✅ **文檔管理**: 文檔列表與詳情頁面
 - ✅ **診斷工具**: API 連接測試與診斷功能
 - ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
+- ✅ **視覺提示**: 必填欄位脈衝邊框提醒效果
 
 ### 開發中功能
 
