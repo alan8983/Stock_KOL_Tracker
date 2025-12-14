@@ -72,7 +72,52 @@ flutter run
 
 ## 📊 Git 推送進展記錄
 
-### 🎯 最新進展 (2025-12-13)
+### 🎯 最新進展 (2025-12-15)
+
+#### 新功能：K線圖、漲跌幅計算與勝率統計
+**日期**: 2025-12-15  
+**主要變更**:
+- ✅ **K線圖功能實現** - 使用 `candlesticks` 套件繪製專業 K 線圖
+  - 支援雙指縮放與左右平移
+  - 自動顯示交易量柱狀圖
+  - 三種顏色主題（歐美/深色/亞洲風格）
+  - 90日數據顯示與情緒分布統計
+- ✅ **漲跌幅計算功能** - 在 PostCard 上顯示股價漲跌幅
+  - 支援 5、30、90、365 天四個時間區間
+  - 左右滑動切換時間區間
+  - 交易日對齊邏輯（向前查找最多 7 天）
+  - 批次計算與快取機制
+- ✅ **勝率統計功能** - KOL 與股票列表統計顯示
+  - 門檻版勝率計算（±2% 門檻）
+  - 多時間區間統計（5/30/90/365 天）
+  - 文檔數量、情緒分布、近期表現顯示
+  - 展開型卡片設計
+- ✅ **文檔重組** - 所有技術文檔整理至 `docs/` 資料夾
+  - 新增文檔索引 (`docs/INDEX.md`)
+  - 重新組織文檔結構與分類
+  - 更新所有文檔連結路徑
+
+**技術改進**:
+- 新增 `candlesticks` 套件用於 K 線圖繪製
+- 實現價格變動計算器與勝率計算器
+- 新增多個 Providers（`stock_price_provider`, `price_change_provider`, `win_rate_provider` 等）
+- 新增多個 Widgets（`stock_chart_widget`, `price_change_indicator`, `kol_stats_card`, `stock_stats_card` 等）
+
+**UI 改進**:
+- 專業的 K 線圖顯示與互動
+- 漲跌幅視覺化指示器
+- 統計卡片設計與展開動畫
+- 改善列表頁面的資訊展示
+
+**相關文件**:
+- [K_LINE_CHART_IMPLEMENTATION.md](./docs/K_LINE_CHART_IMPLEMENTATION.md) - K線圖功能實作總結
+- [PRICE_CHANGE_IMPLEMENTATION_SUMMARY.md](./docs/PRICE_CHANGE_IMPLEMENTATION_SUMMARY.md) - 漲跌幅計算功能總結
+- [WIN_RATE_STATS_IMPLEMENTATION_SUMMARY.md](./docs/WIN_RATE_STATS_IMPLEMENTATION_SUMMARY.md) - 勝率統計功能總結
+- [文檔索引](./docs/INDEX.md) - 所有文檔的完整索引
+
+---
+
+### 📅 近期進展 (2025-12-13)
 
 #### 新功能：AI 辨識 KOL 與發文時間
 **日期**: 2025-12-13  
@@ -101,7 +146,7 @@ flutter run
 - 改善用戶體驗，減少手動輸入需求
 
 **相關文件**:
-- [AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md](./AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md) - 完整實作總結
+- [AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md](./docs/AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md) - 完整實作總結
 
 ---
 
@@ -113,7 +158,7 @@ flutter run
 - ✅ 新增詳細的 API Keys 申請指南（Gemini 和 Tiingo）
 - ✅ 新增 Git Hooks 設置說明與腳本（`setup-git-hooks.sh` 和 `setup-git-hooks.bat`）
 - ✅ 強化安全注意事項專區，包含多層 API Keys 保護措施
-- ✅ 新增 AI 分析功能修復總結文件（`AI_ANALYSIS_FIX_SUMMARY.md`）
+- ✅ 新增 AI 分析功能修復總結文件（`docs/AI_ANALYSIS_FIX_SUMMARY.md`）
 - ✅ 新增診斷功能（`diagnostic_screen.dart`、`diagnostic_repository.dart`）
 - ✅ 改善 Gemini 服務的錯誤處理與日誌輸出
 - ✅ 增強草稿編輯畫面功能
@@ -153,7 +198,7 @@ flutter run
 #### Commit: `00a95b8` - 更新 README 文件
 **日期**: 2025-12-10  
 **主要變更**:
-- ✅ 添加新的文件連結（`IMPLEMENTATION_REPORT.md`、`NAVIGATION_TEST_SUMMARY.md`）
+- ✅ 添加新的文件連結（`docs/IMPLEMENTATION_REPORT.md`、`docs/NAVIGATION_TEST_SUMMARY.md`）
 - ✅ 更新已實現功能列表（導覽架構、KOL 管理、股票管理、文檔管理）
 - ✅ 更新專案結構文件，包含詳細的目錄樹
 - ✅ 更新專案進度統計，標記導覽架構重構完成
@@ -172,7 +217,7 @@ flutter run
 - ✅ 新增 `kol_list_provider` 和 `stock_list_provider` 進行狀態管理
 - ✅ 改善草稿列表流程，使用 Navigator 返回值傳遞資料
 - ✅ 更新 Repository 層，新增搜尋和 `getById` 方法
-- ✅ 新增實施報告文件（`IMPLEMENTATION_REPORT.md`、`NAVIGATION_TEST_SUMMARY.md`）
+- ✅ 新增實施報告文件（`docs/IMPLEMENTATION_REPORT.md`、`docs/NAVIGATION_TEST_SUMMARY.md`）
 
 **架構改進**:
 - 完整的底部導覽架構，支援 4 個主要功能區塊
@@ -188,8 +233,8 @@ flutter run
 **日期**: 2025-12-09  
 **主要變更**:
 - ✅ 新增測試腳本 (`test_api.sh`, `test/api_connection_test.dart`, `test/gemini_diagnostic_test.dart`)
-- ✅ 建立安全通知文件 (`SECURITY_NOTICE.md`) - 處理 API Keys 洩露問題
-- ✅ 新增 Commit Log 文件 (`COMMIT_LOG.md`) - 詳細記錄開發進度
+- ✅ 建立安全通知文件 (`docs/SECURITY_NOTICE.md`) - 處理 API Keys 洩露問題
+- ✅ 新增 Commit Log 文件 (`docs/COMMIT_LOG.md`) - 詳細記錄開發進度
 - ✅ 移除硬編碼的 API Keys，改為從環境變數讀取
 - ✅ 更新依賴套件，改善程式碼結構
 - ✅ 將 Sample 檔案轉換為 .txt 格式
@@ -288,9 +333,9 @@ flutter run
 
 | 狀態 | 數量 | 百分比 |
 |------|------|--------|
-| ✅ 已完成 | 5 | 45.5% |
+| ✅ 已完成 | 6 | 54.5% |
 | 🔄 進行中 | 0 | 0% |
-| ⏳ 待處理 | 6 | 54.5% |
+| ⏳ 待處理 | 5 | 45.5% |
 | **總計** | **11** | **100%** |
 
 ### 已完成階段
@@ -310,9 +355,15 @@ flutter run
    - 實現 KOL 列表、股票列表、文檔列表功能
    - 完成導航流程測試與驗證
 
+4. ✅ **Phase 4**: 核心功能 - 分析與 UI (2025-12-15)
+   - K 線圖功能實現（使用 candlesticks 套件）
+   - 漲跌幅計算與顯示（多時間區間）
+   - 勝率統計功能（門檻版計算）
+   - 統計卡片 UI 設計
+
 ### 進行中階段
 
-4. ✅ **Phase 3**: 核心功能 - 輸入流
+3. ✅ **Phase 3**: 核心功能 - 輸入流
    - UI 輸入頁面：✅ 已完成
    - **自動填入邏輯：✅ 已完成** (2025-12-13)
      - AI 自動辨識 KOL 名稱與發文時間
@@ -321,10 +372,6 @@ flutter run
    - Review 與儲存：待處理
 
 ### 待處理階段
-
-5. ⏳ **Phase 4**: 核心功能 - 分析與 UI
-   - K 線圖與標記繪製
-   - 回測邏輯（勝率計算）
 
 6. ⏳ **Phase 5**: 優化與完善
    - 錯誤處理
@@ -352,6 +399,9 @@ flutter run
 - ✅ **診斷工具**: API 連接測試與診斷功能
 - ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
 - ✅ **視覺提示**: 必填欄位脈衝邊框提醒效果
+- ✅ **K線圖**: 專業 K 線圖顯示與互動（支援縮放、平移、交易量顯示）
+- ✅ **漲跌幅計算**: 多時間區間漲跌幅顯示（5/30/90/365 天）
+- ✅ **勝率統計**: KOL 與股票勝率計算與顯示（門檻版 ±2%）
 
 ### 開發中功能
 
@@ -444,18 +494,32 @@ scripts\setup-git-hooks.bat
   1. 撤銷舊的 API Key
   2. 申請新的 API Key
   3. 更新 `.env` 檔案
-  4. 參考 [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) 進行完整處理
+  4. 參考 [SECURITY_NOTICE.md](./docs/SECURITY_NOTICE.md) 進行完整處理
 
 ---
 
 ## 📝 相關文件
 
-- [COMMIT_LOG.md](./COMMIT_LOG.md) - 詳細的 Commit 記錄與功能說明
-- [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) - 安全注意事項與 API Keys 洩露處理指南
-- [BACKLOG.md](./BACKLOG.md) - 產品待辦清單與用戶故事
-- [PROJECT_MASTER_PLAN.md](./PROJECT_MASTER_PLAN.md) - 專案主計劃文件
-- [IMPLEMENTATION_REPORT.md](./IMPLEMENTATION_REPORT.md) - APP 導覽架構重構實施報告
-- [NAVIGATION_TEST_SUMMARY.md](./NAVIGATION_TEST_SUMMARY.md) - 導航架構測試總結
+所有技術文檔已整理至 [`docs/`](./docs/) 資料夾，請參閱 [文檔索引](./docs/INDEX.md) 查看完整文檔列表。
+
+### 主要文檔
+
+- **[文檔索引](./docs/INDEX.md)** - 所有文檔的完整索引與分類
+- [PROJECT_MASTER_PLAN.md](./docs/PROJECT_MASTER_PLAN.md) - 專案主計劃文件（唯一真理來源）
+- [BACKLOG.md](./docs/BACKLOG.md) - 產品待辦清單與用戶故事
+- [COMMIT_LOG.md](./docs/COMMIT_LOG.md) - 詳細的 Commit 記錄與功能說明
+- [SECURITY_NOTICE.md](./docs/SECURITY_NOTICE.md) - 安全注意事項與 API Keys 洩露處理指南
+
+### 實施報告
+
+- [IMPLEMENTATION_REPORT.md](./docs/IMPLEMENTATION_REPORT.md) - APP 導覽架構重構實施報告
+- [NAVIGATION_TEST_SUMMARY.md](./docs/NAVIGATION_TEST_SUMMARY.md) - 導航架構測試總結
+- [AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md](./docs/AI_KOL_TIME_RECOGNITION_IMPLEMENTATION.md) - AI 辨識功能實作總結
+- [AI_ANALYSIS_FIX_SUMMARY.md](./docs/AI_ANALYSIS_FIX_SUMMARY.md) - AI 分析功能修復總結
+- [APP_PAGE_ARCHITECTURE_SUMMARY.md](./docs/APP_PAGE_ARCHITECTURE_SUMMARY.md) - APP 頁面架構總結
+
+### 其他
+
 - [.cursor/plans/](./.cursor/plans/) - Agent 執行計劃
 
 ---
