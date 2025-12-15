@@ -74,14 +74,31 @@ flutter run
 
 ### 🎯 最新進展 (2025-12-15)
 
-#### 新功能：K線圖、漲跌幅計算與勝率統計
+#### 技術改進：K線圖自定義實現
 **日期**: 2025-12-15  
 **主要變更**:
-- ✅ **K線圖功能實現** - 使用 `candlesticks` 套件繪製專業 K 線圖
-  - 支援雙指縮放與左右平移
-  - 自動顯示交易量柱狀圖
-  - 三種顏色主題（歐美/深色/亞洲風格）
-  - 90日數據顯示與情緒分布統計
+- ✅ **K線圖完全重構** - 從 `candlesticks` 套件遷移到自定義 CustomPainter 實現
+  - 解決 Marker 定位錯誤問題（情緒標記精確顯示在對應 K 線上）
+  - 實現縮放/平移完全同步（所有圖層同步移動）
+  - 修正日期格式（從 hh:mm 改為 mmm-dd，如 Dec-15）
+  - 使用 `FlChartController` 統一管理狀態和座標轉換
+  - 分層繪製架構（CandlesPainter、VolumePainter、SentimentMarkersPainter）
+  - 智能日期標籤間隔，避免重疊
+  - 順延邏輯（發布日無交易時自動順延到下一個交易日）
+- ✅ **漲跌幅計算功能** - 在 PostCard 上顯示股價漲跌幅
+  - 支援 5、30、90、365 天四個時間區間
+  - 左右滑動切換時間區間
+  - 交易日對齊邏輯（向前查找最多 7 天）
+  - 批次計算與快取機制
+- ✅ **勝率統計功能** - KOL 與股票列表統計顯示
+  - 門檻版勝率計算（±2% 門檻）
+  - 多時間區間統計（5/30/90/365 天）
+  - 文檔數量、情緒分布、近期表現顯示
+  - 展開型卡片設計
+- ✅ **文檔重組** - 所有技術文檔整理至 `docs/` 資料夾
+  - 新增文檔索引 (`docs/INDEX.md`)
+  - 重新組織文檔結構與分類
+  - 更新所有文檔連結路徑
 - ✅ **漲跌幅計算功能** - 在 PostCard 上顯示股價漲跌幅
   - 支援 5、30、90、365 天四個時間區間
   - 左右滑動切換時間區間
@@ -98,10 +115,14 @@ flutter run
   - 更新所有文檔連結路徑
 
 **技術改進**:
-- 新增 `candlesticks` 套件用於 K 線圖繪製
+- **K線圖自定義實現** - 使用 Flutter CustomPainter 完全自定義實現
+  - 移除 `candlesticks` 套件依賴
+  - 新增 `intl` 套件用於日期格式化
+  - 實現精確的座標映射系統（價格 ↔ Y座標，索引 ↔ X座標）
+  - 統一狀態管理（`FlChartController`）
 - 實現價格變動計算器與勝率計算器
 - 新增多個 Providers（`stock_price_provider`, `price_change_provider`, `win_rate_provider` 等）
-- 新增多個 Widgets（`stock_chart_widget`, `price_change_indicator`, `kol_stats_card`, `stock_stats_card` 等）
+- 新增多個 Widgets（`fl_chart_controller`, `candles_painter`, `volume_painter`, `sentiment_markers_painter`, `price_change_indicator`, `kol_stats_card`, `stock_stats_card` 等）
 
 **UI 改進**:
 - 專業的 K 線圖顯示與互動
@@ -110,7 +131,8 @@ flutter run
 - 改善列表頁面的資訊展示
 
 **相關文件**:
-- [K_LINE_CHART_IMPLEMENTATION.md](./docs/K_LINE_CHART_IMPLEMENTATION.md) - K線圖功能實作總結
+- [FL_CHART_IMPLEMENTATION.md](./docs/FL_CHART_IMPLEMENTATION.md) - K線圖自定義實現總結（最新）
+- [K_LINE_CHART_IMPLEMENTATION.md](./docs/K_LINE_CHART_IMPLEMENTATION.md) - K線圖功能實作總結（candlesticks 版本）
 - [PRICE_CHANGE_IMPLEMENTATION_SUMMARY.md](./docs/PRICE_CHANGE_IMPLEMENTATION_SUMMARY.md) - 漲跌幅計算功能總結
 - [WIN_RATE_STATS_IMPLEMENTATION_SUMMARY.md](./docs/WIN_RATE_STATS_IMPLEMENTATION_SUMMARY.md) - 勝率統計功能總結
 - [文檔索引](./docs/INDEX.md) - 所有文檔的完整索引
@@ -399,7 +421,7 @@ flutter run
 - ✅ **診斷工具**: API 連接測試與診斷功能
 - ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
 - ✅ **視覺提示**: 必填欄位脈衝邊框提醒效果
-- ✅ **K線圖**: 專業 K 線圖顯示與互動（支援縮放、平移、交易量顯示）
+- ✅ **K線圖**: 自定義實現的專業 K 線圖（CustomPainter，精確 Marker 定位，完全同步縮放/平移）
 - ✅ **漲跌幅計算**: 多時間區間漲跌幅顯示（5/30/90/365 天）
 - ✅ **勝率統計**: KOL 與股票勝率計算與顯示（門檻版 ±2%）
 
