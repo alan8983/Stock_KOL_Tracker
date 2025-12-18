@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/stock_list_provider.dart';
-import '../../../data/database/database.dart';
+import '../../../domain/providers/stock_stats_provider.dart';
+import '../../../data/models/stock_stats.dart';
+import '../../widgets/stock_stats_card.dart';
 import 'stock_view_screen.dart';
 
 /// 投資標的列表頁面
@@ -49,6 +51,7 @@ class _StockListScreenState extends ConsumerState<StockListScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final stocksAsync = ref.watch(stockListProvider);
+    final stockStatsAsync = ref.watch(allStockStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -102,51 +105,16 @@ class _StockListScreenState extends ConsumerState<StockListScreen>
             );
           }
 
+          // 過濾掉「臨時」股票 (ticker='TEMP')
+          final validStocks = stocks.where((stock) => stock.ticker != 'TEMP').toList();
+
           return ListView.builder(
-            itemCount: stocks.length,
+            itemCount: validStocks.length,
             itemBuilder: (context, index) {
-              final stock = stocks[index];
+              final stock = validStocks[index];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      stock.ticker.substring(0, stock.ticker.length >= 2 ? 2 : 1),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  title: Row(
-                    children: [
-                      Text(
-                        stock.ticker,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (stock.name != null) ...[
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            stock.name!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  subtitle: stock.exchange != null
-                      ? Text(
-                          stock.exchange!,
-                          style: const TextStyle(fontSize: 12),
-                        )
-                      : null,
-                  trailing: const Icon(Icons.chevron_right),
+                child: InkWell(
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -154,6 +122,92 @@ class _StockListScreenState extends ConsumerState<StockListScreen>
                       ),
                     );
                   },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 股票基本資訊
+                      ListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            stock.ticker.substring(0, stock.ticker.length >= 2 ? 2 : 1),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Text(
+                              stock.ticker,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (stock.name != null) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  stock.name!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        subtitle: stock.exchange != null
+                            ? Text(
+                                stock.exchange!,
+                                style: const TextStyle(fontSize: 12),
+                              )
+                            : null,
+                        trailing: const Icon(Icons.chevron_right),
+                      ),
+                      
+                      // 統計資訊
+                      stockStatsAsync.when(
+                        data: (statsList) {
+                          final stats = statsList.firstWhere(
+                            (s) => s.ticker == stock.ticker,
+                            orElse: () => StockStats(
+                              ticker: stock.ticker,
+                              stockName: stock.name,
+                              totalPosts: 0,
+                              kolCount: 0,
+                              bullishCount: 0,
+                              bearishCount: 0,
+                              neutralCount: 0,
+                              avgPriceChanges: {},
+                            ),
+                          );
+                          
+                          if (stats.totalPosts > 0) {
+                            return Column(
+                              children: [
+                                const Divider(height: 1),
+                                StockStatsCard(stats: stats),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

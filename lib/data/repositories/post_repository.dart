@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../database/database.dart';
+import '../models/post_with_details.dart';
 
 class PostRepository {
   final AppDatabase _db;
@@ -88,6 +89,16 @@ class PostRepository {
         .get();
   }
 
+  /// 取得所有已發布的貼文（依發文時間排序）
+  Future<List<Post>> getPublishedPosts({bool ascending = false}) async {
+    return await (_db.select(_db.posts)
+          ..where((tbl) => tbl.status.equals('Published'))
+          ..orderBy([(t) => ascending 
+              ? OrderingTerm.asc(t.postedAt) 
+              : OrderingTerm.desc(t.postedAt)]))
+        .get();
+  }
+
   /// 刪除單一草稿
   Future<void> deleteDraft(int id) async {
     await (_db.delete(_db.posts)..where((tbl) => tbl.id.equals(id))).go();
@@ -96,6 +107,11 @@ class PostRepository {
   /// 批次刪除草稿
   Future<void> deleteDrafts(List<int> ids) async {
     await (_db.delete(_db.posts)..where((tbl) => tbl.id.isIn(ids))).go();
+  }
+
+  /// 刪除文檔（可刪除任何狀態的文檔）
+  Future<void> deletePost(int id) async {
+    await (_db.delete(_db.posts)..where((tbl) => tbl.id.equals(id))).go();
   }
 
   /// 取得特定草稿
@@ -138,5 +154,84 @@ class PostRepository {
     );
 
     return await _db.into(_db.posts).insert(companion);
+  }
+
+  /// 按 Stock 查詢已發布的文檔
+  Future<List<Post>> getPostsByStock(String ticker, {DateTime? afterDate}) async {
+    final minDate = afterDate ?? DateTime(2023, 1, 1);
+    return await (_db.select(_db.posts)
+          ..where((tbl) => 
+            tbl.stockTicker.equals(ticker) & 
+            tbl.status.equals('Published') &
+            tbl.postedAt.isBiggerOrEqualValue(minDate))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.postedAt)]))
+        .get();
+  }
+
+  /// 按 KOL 查詢已發布的文檔
+  Future<List<Post>> getPostsByKOL(int kolId, {DateTime? afterDate}) async {
+    final minDate = afterDate ?? DateTime(2023, 1, 1);
+    return await (_db.select(_db.posts)
+          ..where((tbl) => 
+            tbl.kolId.equals(kolId) & 
+            tbl.status.equals('Published') &
+            tbl.postedAt.isBiggerOrEqualValue(minDate))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.postedAt)]))
+        .get();
+  }
+
+  /// 按日期範圍查詢已發布的文檔
+  Future<List<Post>> getPostsByDateRange(DateTime start, DateTime end) async {
+    return await (_db.select(_db.posts)
+          ..where((tbl) => 
+            tbl.status.equals('Published') & 
+            tbl.postedAt.isBiggerOrEqualValue(start) & 
+            tbl.postedAt.isSmallerOrEqualValue(end))
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.postedAt)]))
+        .get();
+  }
+
+  /// 按 Stock 查詢已發布的文檔（包含 KOL 和 Stock 詳細資訊）
+  Future<List<PostWithDetails>> getPostsWithDetailsByStock(String ticker, {DateTime? afterDate}) async {
+    final minDate = afterDate ?? DateTime(2023, 1, 1);
+    final query = _db.select(_db.posts).join([
+      leftOuterJoin(_db.kOLs, _db.kOLs.id.equalsExp(_db.posts.kolId)),
+      leftOuterJoin(_db.stocks, _db.stocks.ticker.equalsExp(_db.posts.stockTicker)),
+    ])
+      ..where(_db.posts.stockTicker.equals(ticker) & 
+              _db.posts.status.equals('Published') &
+              _db.posts.postedAt.isBiggerOrEqualValue(minDate))
+      ..orderBy([OrderingTerm.desc(_db.posts.postedAt)]);
+    
+    final results = await query.get();
+    return results.map((row) {
+      return PostWithDetails(
+        post: row.readTable(_db.posts),
+        kol: row.readTable(_db.kOLs),
+        stock: row.readTable(_db.stocks),
+      );
+    }).toList();
+  }
+
+  /// 按 KOL 查詢已發布的文檔（包含 KOL 和 Stock 詳細資訊）
+  Future<List<PostWithDetails>> getPostsWithDetailsByKOL(int kolId, {DateTime? afterDate}) async {
+    final minDate = afterDate ?? DateTime(2023, 1, 1);
+    final query = _db.select(_db.posts).join([
+      leftOuterJoin(_db.kOLs, _db.kOLs.id.equalsExp(_db.posts.kolId)),
+      leftOuterJoin(_db.stocks, _db.stocks.ticker.equalsExp(_db.posts.stockTicker)),
+    ])
+      ..where(_db.posts.kolId.equals(kolId) & 
+              _db.posts.status.equals('Published') &
+              _db.posts.postedAt.isBiggerOrEqualValue(minDate))
+      ..orderBy([OrderingTerm.desc(_db.posts.postedAt)]);
+    
+    final results = await query.get();
+    return results.map((row) {
+      return PostWithDetails(
+        post: row.readTable(_db.posts),
+        kol: row.readTable(_db.kOLs),
+        stock: row.readTable(_db.stocks),
+      );
+    }).toList();
   }
 }

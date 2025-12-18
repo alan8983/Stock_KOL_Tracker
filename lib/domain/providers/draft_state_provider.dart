@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../data/models/draft_form_state.dart';
@@ -5,7 +6,10 @@ import '../../data/models/relative_time_input.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/post_repository.dart';
 import '../../data/repositories/stock_repository.dart';
+import '../../data/repositories/kol_repository.dart';
 import '../../data/services/Gemini/gemini_service.dart';
+import '../../core/utils/time_parser.dart';
+import '../../core/utils/kol_matcher.dart';
 import 'repository_providers.dart';
 import 'service_providers.dart';
 
@@ -13,12 +17,14 @@ import 'service_providers.dart';
 class DraftStateNotifier extends StateNotifier<DraftFormState> {
   final PostRepository _postRepository;
   final StockRepository _stockRepository;
+  final KOLRepository _kolRepository;
   final GeminiService _geminiService;
   int? _draftId;
 
   DraftStateNotifier(
     this._postRepository,
     this._stockRepository,
+    this._kolRepository,
     this._geminiService,
   ) : super(const DraftFormState());
 
@@ -82,7 +88,7 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     try {
       final result = await _geminiService.analyzeText(state.content);
       
-      print('📊 DraftStateNotifier: 收到分析結果 - 情緒: ${result.sentiment}, 股票: ${result.tickers}');
+      print('📊 DraftStateNotifier: 收到分析結果 - 情緒: ${result.sentiment}, 股票: ${result.tickers}, KOL: ${result.kolName}, 時間: ${result.postedAtText}');
       
       // 自動填入 AI 分析結果
       String? ticker;
@@ -106,11 +112,40 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
         }
       }
 
+      // 處理 KOL 匹配
+      int? kolId;
+      if (result.kolName != null && result.kolName!.isNotEmpty) {
+        print('👤 DraftStateNotifier: 嘗試匹配 KOL "${result.kolName}"...');
+        final allKols = await _kolRepository.getAllKOLs();
+        kolId = KOLMatcher.findBestMatch(result.kolName, allKols);
+        
+        if (kolId != null) {
+          print('✅ DraftStateNotifier: 已自動選擇 KOL (ID: $kolId)');
+        } else {
+          print('⚠️ DraftStateNotifier: 未找到匹配的 KOL，需手動選擇');
+        }
+      }
+
+      // 處理時間解析
+      DateTime? postedAt;
+      if (result.postedAtText != null && result.postedAtText!.isNotEmpty) {
+        print('🕐 DraftStateNotifier: 嘗試解析時間 "${result.postedAtText}"...');
+        postedAt = TimeParser.parse(result.postedAtText);
+        
+        if (postedAt != null) {
+          print('✅ DraftStateNotifier: 已自動填入發文時間: $postedAt');
+        } else {
+          print('⚠️ DraftStateNotifier: 無法解析時間，需手動輸入');
+        }
+      }
+
       state = state.copyWith(
         isAnalyzing: false,
         aiResult: result,
         ticker: ticker ?? state.ticker,
         sentiment: result.sentiment,
+        kolId: kolId ?? state.kolId,
+        postedAt: postedAt ?? state.postedAt,
       );
       
       print('✅ DraftStateNotifier: AI分析完成並已更新狀態');
@@ -144,6 +179,16 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     try {
       state = state.copyWith(isSaving: true);
 
+      // 將 AI 分析結果轉為 JSON 字串
+      String? aiAnalysisJson;
+      if (state.aiResult != null) {
+        try {
+          aiAnalysisJson = jsonEncode(state.aiResult!.toJson());
+        } catch (e) {
+          print('⚠️ DraftStateNotifier: AI 分析結果序列化失敗: $e');
+        }
+      }
+
       final companion = PostsCompanion.insert(
         kolId: state.kolId!,
         stockTicker: state.ticker!,
@@ -152,6 +197,9 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
         postedAt: state.postedAt!,
         createdAt: DateTime.now(),
         status: 'Draft',
+        aiAnalysisJson: aiAnalysisJson != null 
+            ? drift.Value(aiAnalysisJson)
+            : const drift.Value.absent(),
       );
 
       if (_draftId != null) {
@@ -218,6 +266,7 @@ final draftStateProvider =
     StateNotifierProvider<DraftStateNotifier, DraftFormState>((ref) {
   final postRepo = ref.watch(postRepositoryProvider);
   final stockRepo = ref.watch(stockRepositoryProvider);
+  final kolRepo = ref.watch(kolRepositoryProvider);
   final geminiService = ref.watch(geminiServiceProvider);
-  return DraftStateNotifier(postRepo, stockRepo, geminiService);
+  return DraftStateNotifier(postRepo, stockRepo, kolRepo, geminiService);
 });

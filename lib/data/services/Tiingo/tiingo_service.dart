@@ -10,14 +10,25 @@ class TiingoService {
       : _apiToken = apiToken,
         _dio = dio ?? Dio();
 
-  Future<List<StockPricesCompanion>> fetchDailyPrices(String ticker) async {
+  Future<List<StockPricesCompanion>> fetchDailyPrices(
+    String ticker, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
+      final effectiveStartDate = startDate ?? DateTime(2023, 1, 1);
+      final queryParams = {
+        'token': _apiToken,
+        'startDate': '${effectiveStartDate.year}-${effectiveStartDate.month.toString().padLeft(2, '0')}-${effectiveStartDate.day.toString().padLeft(2, '0')}',
+      };
+      
+      if (endDate != null) {
+        queryParams['endDate'] = '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+      }
+      
       final response = await _dio.get(
         '$_baseUrl/daily/$ticker/prices',
-        queryParameters: {
-          'token': _apiToken,
-          'startDate': '2000-01-01', // Get reasonable history
-        },
+        queryParameters: queryParams,
       );
 
       if (response.statusCode == 200) {

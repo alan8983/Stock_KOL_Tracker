@@ -14,43 +14,33 @@ class SentimentSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        const Text(
-          '走勢情緒',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        _SentimentChip(
+          label: '看多',
+          value: 'Bullish',
+          icon: Icons.trending_up,
+          color: Colors.green,
+          isSelected: selectedSentiment == 'Bullish',
+          onTap: () => onChanged('Bullish'),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _SentimentChip(
-              label: '看多',
-              value: 'Bullish',
-              icon: Icons.trending_up,
-              color: Colors.green,
-              isSelected: selectedSentiment == 'Bullish',
-              onTap: () => onChanged('Bullish'),
-            ),
-            const SizedBox(width: 8),
-            _SentimentChip(
-              label: '看空',
-              value: 'Bearish',
-              icon: Icons.trending_down,
-              color: Colors.red,
-              isSelected: selectedSentiment == 'Bearish',
-              onTap: () => onChanged('Bearish'),
-            ),
-            const SizedBox(width: 8),
-            _SentimentChip(
-              label: '中立',
-              value: 'Neutral',
-              icon: Icons.remove,
-              color: Colors.grey,
-              isSelected: selectedSentiment == 'Neutral',
-              onTap: () => onChanged('Neutral'),
-            ),
-          ],
+        const SizedBox(width: 8),
+        _SentimentChip(
+          label: '看空',
+          value: 'Bearish',
+          icon: Icons.trending_down,
+          color: Colors.red,
+          isSelected: selectedSentiment == 'Bearish',
+          onTap: () => onChanged('Bearish'),
+        ),
+        const SizedBox(width: 8),
+        _SentimentChip(
+          label: '中立',
+          value: 'Neutral',
+          icon: Icons.remove,
+          color: Colors.grey,
+          isSelected: selectedSentiment == 'Neutral',
+          onTap: () => onChanged('Neutral'),
         ),
       ],
     );

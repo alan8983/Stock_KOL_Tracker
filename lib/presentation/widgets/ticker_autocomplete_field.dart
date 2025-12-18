@@ -48,7 +48,6 @@ class _TickerAutocompleteFieldState
           controller: controller,
           focusNode: focusNode,
           decoration: const InputDecoration(
-            labelText: '投資標的 (Ticker)',
             hintText: '例如: AAPL, TSLA',
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.search),

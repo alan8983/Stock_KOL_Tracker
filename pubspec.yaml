@@ -9,10 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   
   # State Management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
+  
+  # Utilities
+  collection: ^1.18.0
+  markdown: ^7.2.1
+  intl: 0.20.2
 
   # Database
   drift: ^2.16.0
@@ -31,6 +38,7 @@ dependencies:
 
   # UI/Charts (Phase 4)
   fl_chart: ^0.66.2
+  # candlesticks: ^2.1.0  # 已移除，改用 CustomPainter 自定義實現
 
 dev_dependencies:
   flutter_test:

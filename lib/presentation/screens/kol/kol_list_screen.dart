@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/kol_list_provider.dart';
+import '../../../domain/providers/kol_win_rate_provider.dart';
 import '../../../domain/providers/repository_providers.dart';
-import '../../../data/database/database.dart';
+import '../../../data/models/win_rate_stats.dart';
 import '../../widgets/create_kol_dialog.dart';
+import '../../widgets/kol_stats_card.dart';
 import 'kol_view_screen.dart';
 
 /// KOL列表頁面
@@ -63,6 +65,7 @@ class _KOLListScreenState extends ConsumerState<KOLListScreen> with AutomaticKee
   Widget build(BuildContext context) {
     super.build(context);
     final kolsAsync = ref.watch(kolListProvider);
+    final kolStatsAsync = ref.watch(allKOLWinRateStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -116,34 +119,16 @@ class _KOLListScreenState extends ConsumerState<KOLListScreen> with AutomaticKee
             );
           }
 
+          // 過濾掉「未分類」KOL (id=1)
+          final validKols = kols.where((kol) => kol.id != 1).toList();
+
           return ListView.builder(
-            itemCount: kols.length,
+            itemCount: validKols.length,
             itemBuilder: (context, index) {
-              final kol = kols[index];
+              final kol = validKols[index];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      kol.name.isNotEmpty ? kol.name[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ),
-                  title: Text(
-                    kol.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: kol.bio != null
-                      ? Text(
-                          kol.bio!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      : null,
-                  trailing: const Icon(Icons.chevron_right),
+                child: InkWell(
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -151,6 +136,75 @@ class _KOLListScreenState extends ConsumerState<KOLListScreen> with AutomaticKee
                       ),
                     );
                   },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // KOL 基本資訊
+                      ListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            kol.name.isNotEmpty ? kol.name[0].toUpperCase() : '?',
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                        ),
+                        title: Text(
+                          kol.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: kol.bio != null
+                            ? Text(
+                                kol.bio!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : null,
+                        trailing: const Icon(Icons.chevron_right),
+                      ),
+                      
+                      // 統計資訊
+                      kolStatsAsync.when(
+                        data: (statsList) {
+                          final stats = statsList.firstWhere(
+                            (s) => s.kolId == kol.id,
+                            orElse: () => KOLWinRateStats(
+                              kolId: kol.id,
+                              kolName: kol.name,
+                              totalPosts: 0,
+                              stockCount: 0,
+                              bullishCount: 0,
+                              bearishCount: 0,
+                              neutralCount: 0,
+                              winRateStats: const MultiPeriodWinRateStats(periodStats: {}),
+                            ),
+                          );
+                          
+                          if (stats.totalPosts > 0) {
+                            return Column(
+                              children: [
+                                const Divider(height: 1),
+                                KOLStatsCard(stats: stats),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

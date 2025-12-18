@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/draft_state_provider.dart';
 import '../../../data/models/draft_form_state.dart';
 import 'draft_list_screen.dart';
-import 'draft_edit_screen.dart';
+import 'analysis_result_screen.dart';
 
 /// 快速輸入頁面 (Step 0.0)
 /// 作為底部導覽的第一個Tab，支援貼上剪貼簿內容，自動暫存為草稿
@@ -67,7 +67,7 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
     }
   }
 
-  /// 分析並進入編輯頁面
+  /// 分析並進入結果頁面
   Future<void> _onAnalyze() async {
     if (_textController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,11 +88,27 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
       // 確保狀態已更新後再導航
       await Future.delayed(const Duration(milliseconds: 100));
       
-      // 導航到詳細編輯頁面
+      // 使用側向平移動畫導航到分析結果頁面
       if (mounted) {
         final result = await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const DraftEditScreen(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const AnalysisResultScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0); // 從右側滑入
+              const end = Offset.zero;
+              const curve = Curves.easeInOut;
+
+              var tween = Tween(begin: begin, end: end).chain(
+                CurveTween(curve: curve),
+              );
+
+              return SlideTransition(
+                position: animation.drive(tween),
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 400),
           ),
         );
         
@@ -102,15 +118,6 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
             _textController.clear();
           });
           draftState.reset();
-        }
-        
-        // 導航成功後觸發 AI 分析
-        if (mounted) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              draftState.analyzeContent();
-            }
-          });
         }
       }
     } catch (e) {
@@ -147,41 +154,129 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
           final screenHeight = constraints.maxHeight;
           final initialHeight = screenHeight / 3;
           
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _hasText
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _textController,
-                        maxLines: null,
-                        minLines: 1,
-                        decoration: const InputDecoration(
-                          hintText: '請貼上或輸入 KOL 發文內容...',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.all(16),
+          return _hasText
+              ? Column(
+                  children: [
+                    // 可滾動的內容區
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              '有什麼好點子嗎？',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _textController,
+                              maxLines: null,
+                              minLines: 3,
+                              maxLength: null,
+                              decoration: const InputDecoration(
+                                hintText: '請貼上或輸入 KOL 發文內容...',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              textAlignVertical: TextAlignVertical.top,
+                            ),
+                          ],
                         ),
-                        textAlignVertical: TextAlignVertical.top,
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _onAnalyze,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text('分析'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    // 固定在底部的分析按鈕
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF6366F1), // Indigo
+                                Color(0xFF8B5CF6), // Purple
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1).withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _onAnalyze,
+                              borderRadius: BorderRadius.circular(30),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.auto_awesome,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '分析',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                    ],
-                  )
-                : Center(
+                    ),
+                  ],
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const Text(
+                          '有什麼好點子嗎？',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
                         ConstrainedBox(
                           constraints: BoxConstraints(
                             maxHeight: initialHeight,
@@ -200,18 +295,50 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
                           ),
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.auto_awesome),
-                          label: const Text('分析'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF6366F1).withOpacity(0.5),
+                                const Color(0xFF8B5CF6).withOpacity(0.5),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome,
+                                    color: Colors.white.withOpacity(0.7),
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '分析',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-          );
+                );
         },
       ),
     );

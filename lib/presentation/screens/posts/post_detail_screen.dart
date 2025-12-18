@@ -1,9 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/repositories/post_repository.dart';
-import '../../../data/repositories/kol_repository.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../../domain/providers/repository_providers.dart';
+import '../../../domain/providers/post_list_provider.dart';
+import '../../../domain/providers/stock_posts_provider.dart';
+import '../../../domain/providers/kol_posts_provider.dart';
+import '../../../domain/providers/kol_win_rate_provider.dart';
+import '../../../domain/providers/stock_stats_provider.dart';
 import '../../../data/database/database.dart';
+import '../../../data/models/analysis_result.dart';
+import '../../widgets/focused_stock_chart_widget.dart';
 
 /// 單篇文檔詳細頁面
 /// 包含2個子頁籤：主文內容/K線圖
@@ -26,17 +33,21 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
   KOL? _kol;
   bool _isLoading = true;
   bool _isBookmarked = false;
+  bool _isEditingContent = false;
+  late TextEditingController _editContentController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _editContentController = TextEditingController();
     _loadPost();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _editContentController.dispose();
     super.dispose();
   }
 
@@ -81,6 +92,93 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
         duration: const Duration(seconds: 1),
       ),
     );
+  }
+
+  void _toggleEditMode() {
+    setState(() {
+      if (_isEditingContent) {
+        // 取消編輯，恢復原內容
+        _editContentController.text = _post!.content;
+      } else {
+        // 進入編輯模式，初始化內容
+        _editContentController.text = _post!.content;
+      }
+      _isEditingContent = !_isEditingContent;
+    });
+  }
+
+  Future<void> _saveContent() async {
+    final newContent = _editContentController.text.trim();
+    if (newContent.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('內容不能為空'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final postRepo = ref.read(postRepositoryProvider);
+      
+      // 先讀取現有文檔，確保所有欄位都有值
+      final currentPost = await postRepo.getPostById(_post!.id);
+      if (currentPost == null) {
+        throw Exception('找不到此文檔');
+      }
+
+      // 使用現有資料建立 Companion，只更新 content
+      await postRepo.updatePost(
+        _post!.id,
+        PostsCompanion(
+          content: drift.Value(newContent),
+          // 明確保留其他欄位，避免被設為 null
+          kolId: drift.Value(currentPost.kolId),
+          stockTicker: drift.Value(currentPost.stockTicker),
+          sentiment: drift.Value(currentPost.sentiment),
+          postedAt: drift.Value(currentPost.postedAt),
+          createdAt: drift.Value(currentPost.createdAt),
+          status: drift.Value(currentPost.status),
+          aiAnalysisJson: currentPost.aiAnalysisJson != null
+              ? drift.Value(currentPost.aiAnalysisJson)
+              : const drift.Value.absent(),
+        ),
+      );
+
+      // 重新載入文檔以獲取最新資料
+      final updatedPost = await postRepo.getPostById(_post!.id);
+      
+      if (mounted) {
+        setState(() {
+          if (updatedPost != null) {
+            _post = updatedPost;
+          }
+          _isEditingContent = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('儲存成功'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('儲存文檔內容失敗: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('儲存失敗: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildHeader() {
@@ -202,7 +300,17 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 文檔內容卡片
           Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: _isEditingContent
+                  ? BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    )
+                  : BorderSide.none,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -217,29 +325,84 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
                               fontWeight: FontWeight.bold,
                             ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                          color: _isBookmarked
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                        onPressed: _toggleBookmark,
-                        tooltip: _isBookmarked ? '移除書籤' : '加入書籤',
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isEditingContent ? Icons.close : Icons.edit,
+                              color: _isEditingContent
+                                  ? Colors.grey
+                                  : Theme.of(context).colorScheme.primary,
+                            ),
+                            onPressed: _toggleEditMode,
+                            tooltip: _isEditingContent ? '取消編輯' : '編輯內容',
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                              color: _isBookmarked
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            onPressed: _toggleBookmark,
+                            tooltip: _isBookmarked ? '移除書籤' : '加入書籤',
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   const Divider(),
                   const SizedBox(height: 8),
-                  Text(
-                    _post!.content,
-                    style: const TextStyle(fontSize: 16, height: 1.5),
-                  ),
+                  // 編輯模式或顯示模式
+                  if (_isEditingContent) ...[
+                    TextField(
+                      controller: _editContentController,
+                      maxLines: null,
+                      minLines: 10,
+                      decoration: InputDecoration(
+                        hintText: '輸入文檔內容...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 16, height: 1.5),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton(
+                          onPressed: _toggleEditMode,
+                          child: const Text('取消'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: _saveContent,
+                          child: const Text('儲存'),
+                        ),
+                      ],
+                    ),
+                  ] else
+                    Text(
+                      _post!.content,
+                      style: const TextStyle(fontSize: 16, height: 1.5),
+                    ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
+          // AI 摘要卡片（如果有）
+          if (_post!.aiAnalysisJson != null) _buildAISummaryCard(),
+          const SizedBox(height: 16),
+          // 文檔資訊卡片
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -266,6 +429,125 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
     );
   }
 
+  /// AI 分析摘要卡片
+  Widget _buildAISummaryCard() {
+    try {
+      final aiAnalysisJson = _post!.aiAnalysisJson!;
+      final analysisResult = AnalysisResult.fromJson(
+        jsonDecode(aiAnalysisJson) as Map<String, dynamic>,
+      );
+
+      return Card(
+        color: Colors.indigo.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.indigo.shade200),
+        ),
+        child: ExpansionTile(
+          leading: Icon(Icons.auto_awesome, color: Colors.indigo.shade700),
+          title: Text(
+            'AI 分析摘要',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.indigo.shade900,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 情緒判斷
+                  Row(
+                    children: [
+                      const Text(
+                        '情緒判斷：',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildSentimentChip(analysisResult.sentiment),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 核心論述摘要
+                  if (analysisResult.summary.isNotEmpty) ...[
+                    const Text(
+                      '核心論述：',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...analysisResult.summary.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${entry.key + 1}. ',
+                              style: TextStyle(
+                                color: Colors.indigo.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                entry.value,
+                                style: const TextStyle(fontSize: 14, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                  // 推理說明
+                  if (analysisResult.reasoning != null &&
+                      analysisResult.reasoning!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      '推理說明：',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      analysisResult.reasoning!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      return Card(
+        color: Colors.red.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'AI 摘要解析失敗: $e',
+            style: TextStyle(color: Colors.red.shade900),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -283,34 +565,87 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
   }
 
   Widget _buildChartTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.candlestick_chart, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'K線圖',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '顯示該時間點的股價走勢',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '此功能開發中...',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
-      ),
+    if (_post == null) {
+      return const Center(child: Text('無資料'));
+    }
+
+    return FocusedStockChartWidget(
+      ticker: _post!.stockTicker,
+      focusDate: _post!.postedAt, // 傳入文檔發布日期
     );
   }
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.day.toString().padLeft(2, '0')} '
         '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _deletePost() async {
+    // 顯示確認對話框
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('確認刪除'),
+        content: const Text('此操作無法復原，確定要刪除這篇文檔嗎？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('刪除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final postRepo = ref.read(postRepositoryProvider);
+      final deletedPost = _post!; // 保存被刪除的文檔資訊
+      await postRepo.deletePost(_post!.id);
+
+      if (mounted) {
+        // 刷新所有相關的 provider
+        ref.invalidate(postListProvider);
+        
+        // 刷新股票相關的 provider
+        ref.invalidate(stockPostsProvider(deletedPost.stockTicker));
+        ref.invalidate(stockPostsWithDetailsProvider(deletedPost.stockTicker));
+        ref.invalidate(stockStatsProvider(deletedPost.stockTicker));
+        
+        // 刷新 KOL 相關的 provider
+        ref.invalidate(kolPostsProvider(deletedPost.kolId));
+        ref.invalidate(kolPostsWithDetailsProvider(deletedPost.kolId));
+        ref.invalidate(kolPostsGroupedByStockProvider(deletedPost.kolId));
+        ref.invalidate(kolPostStatsProvider(deletedPost.kolId));
+        ref.invalidate(kolWinRateStatsProvider(deletedPost.kolId));
+        ref.invalidate(allKOLWinRateStatsProvider);
+        
+        Navigator.of(context).pop(); // 返回上一頁
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('文檔已刪除'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('刪除失敗: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -344,6 +679,13 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
               pinned: true,
               floating: false,
               forceElevated: innerBoxIsScrolled,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _deletePost,
+                  tooltip: '刪除文檔',
+                ),
+              ],
             ),
             SliverToBoxAdapter(
               child: _buildHeader(),
@@ -364,6 +706,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
         },
         body: TabBarView(
           controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(),
           children: [
             _buildContentTab(),
             _buildChartTab(),

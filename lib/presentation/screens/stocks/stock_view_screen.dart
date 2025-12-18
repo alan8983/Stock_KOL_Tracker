@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/stock_repository.dart';
 import '../../../domain/providers/repository_providers.dart';
+import '../../../domain/providers/stock_posts_provider.dart';
 import '../../../data/database/database.dart';
+import '../posts/post_detail_screen.dart';
+import '../kol/kol_view_screen.dart';
+import '../../widgets/stock_chart_widget.dart';
 
 /// 投資標的詳細頁面
 /// 包含3個子頁籤：文檔清單/市場敘事/K線圖
@@ -120,29 +124,135 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
   }
 
   Widget _buildPostsTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.article_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            '文檔清單',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '顯示所有相關文檔',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '此功能開發中...',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+    final postsAsync = ref.watch(stockPostsWithDetailsProvider(widget.ticker));
+    
+    return postsAsync.when(
+      data: (postsWithDetails) {
+        if (postsWithDetails.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  '此投資標的尚無文檔',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: postsWithDetails.length,
+          itemBuilder: (context, index) {
+            final postWithDetails = postsWithDetails[index];
+            final post = postWithDetails.post;
+            final kol = postWithDetails.kol;
+            
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(
+                    kol.name.substring(0, kol.name.length >= 2 ? 2 : 1),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                title: Text(
+                  post.content.length > 50 
+                    ? '${post.content.substring(0, 50)}...' 
+                    : post.content,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Row(
+                  children: [
+                    Flexible(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => KOLViewScreen(kolId: kol.id),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          kol.name,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                    Text(' · ${_formatDate(post.postedAt)}'),
+                  ],
+                ),
+                trailing: _buildSentimentChip(post.sentiment),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PostDetailScreen(postId: post.id),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('載入失敗: $error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(stockPostsWithDetailsProvider(widget.ticker)),
+              child: const Text('重試'),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildSentimentChip(String sentiment) {
+    Color color;
+    IconData icon;
+    switch (sentiment) {
+      case 'Bullish':
+        color = Colors.green;
+        icon = Icons.trending_up;
+        break;
+      case 'Bearish':
+        color = Colors.red;
+        icon = Icons.trending_down;
+        break;
+      default:
+        color = Colors.grey;
+        icon = Icons.trending_flat;
+    }
+    return Chip(
+      label: Text(sentiment, style: const TextStyle(color: Colors.white, fontSize: 12)),
+      backgroundColor: color,
+      avatar: Icon(icon, color: Colors.white, size: 16),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
   }
 
   Widget _buildNarrativeTab() {
@@ -172,28 +282,12 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
   }
 
   Widget _buildChartTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.candlestick_chart, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'K線圖',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '顯示價格走勢和文檔標記',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '此功能開發中...',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
-      ),
+    // 使用 LayoutBuilder 確保圖表有足夠空間
+    // 移除額外的 padding，讓 K 線圖可以充分利用可用空間
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return StockChartWidget(ticker: widget.ticker);
+      },
     );
   }
 
@@ -249,6 +343,7 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
         },
         body: TabBarView(
           controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(),
           children: [
             _buildPostsTab(),
             _buildNarrativeTab(),

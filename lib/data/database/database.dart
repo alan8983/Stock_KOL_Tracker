@@ -37,6 +37,7 @@ class Posts extends Table {
   DateTimeColumn get postedAt => dateTime()();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get status => text()();
+  TextColumn get aiAnalysisJson => text().nullable()(); // AI 分析結果（JSON 格式）
 }
 
 // Table 4: StockPrices
@@ -53,10 +54,17 @@ class StockPrices extends Table {
 
 @DriftDatabase(tables: [KOLs, Stocks, Posts, StockPrices])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : _skipDefaultData = false, super(_openConnection());
+  
+  /// 測試用建構子，允許使用自訂 executor
+  AppDatabase.customExecutor(QueryExecutor executor, {bool skipDefaultData = false})
+      : _skipDefaultData = skipDefaultData,
+        super(executor);
+
+  final bool _skipDefaultData;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -64,16 +72,21 @@ class AppDatabase extends _$AppDatabase {
       onCreate: (Migrator m) async {
         await m.createAll();
         
+        // 跳過預設資料（在測試環境中使用）
+        if (_skipDefaultData) return;
+        
         // 建立預設 KOL（未分類）- 用於快速草稿
+        // 注意：Drift 將 KOLs 類別轉換為 k_o_ls 表名，createdAt 轉換為 created_at
+        // 注意：Drift 預設將 DateTime 儲存為 Unix Timestamp (seconds)，所以使用 strftime('%s', 'now')
         await customStatement('''
-          INSERT OR IGNORE INTO kols (id, name, createdAt) 
-          VALUES (1, '未分類', datetime('now'));
+          INSERT OR IGNORE INTO k_o_ls (id, name, created_at) 
+          VALUES (1, '未分類', CAST(strftime('%s', 'now') AS INTEGER));
         ''');
         
         // 建立預設 Stock（臨時）- 用於快速草稿
         await customStatement('''
-          INSERT OR IGNORE INTO stocks (ticker, name, lastUpdated) 
-          VALUES ('TEMP', '臨時', datetime('now'));
+          INSERT OR IGNORE INTO stocks (ticker, name, last_updated) 
+          VALUES ('TEMP', '臨時', CAST(strftime('%s', 'now') AS INTEGER));
         ''');
         
         // 為 StockPrices 添加複合唯一索引 (ticker, date)
@@ -92,12 +105,15 @@ class AppDatabase extends _$AppDatabase {
           ON stock_prices(ticker, date);
         ''');
         
+        // 跳過預設資料（在測試環境中使用）
+        if (_skipDefaultData) return;
+        
         // 確保預設數據存在（僅當表已存在時）
         // 如果表不存在，INSERT 會失敗，我們捕獲錯誤即可
         try {
           await customStatement('''
-            INSERT OR IGNORE INTO kols (id, name, createdAt) 
-            VALUES (1, '未分類', datetime('now'));
+            INSERT OR IGNORE INTO k_o_ls (id, name, created_at) 
+            VALUES (1, '未分類', CAST(strftime('%s', 'now') AS INTEGER));
           ''');
         } catch (e) {
           // 如果表不存在，忽略錯誤（將在 onCreate 中處理）
@@ -105,15 +121,18 @@ class AppDatabase extends _$AppDatabase {
         
         try {
           await customStatement('''
-            INSERT OR IGNORE INTO stocks (ticker, name, lastUpdated) 
-            VALUES ('TEMP', '臨時', datetime('now'));
+            INSERT OR IGNORE INTO stocks (ticker, name, last_updated) 
+            VALUES ('TEMP', '臨時', CAST(strftime('%s', 'now') AS INTEGER));
           ''');
         } catch (e) {
           // 如果表不存在，忽略錯誤（將在 onCreate 中處理）
         }
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // 未來版本升級時使用
+        // 從版本 1 升級到版本 2：新增 aiAnalysisJson 欄位
+        if (from == 1 && to >= 2) {
+          await m.addColumn(posts, posts.aiAnalysisJson);
+        }
       },
     );
   }

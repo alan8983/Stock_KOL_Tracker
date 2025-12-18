@@ -22,6 +22,8 @@ class KOLSelector extends ConsumerStatefulWidget {
 }
 
 class _KOLSelectorState extends ConsumerState<KOLSelector> {
+  static const int _newKolId = -1; // 特殊 ID 代表新增 KOL
+
   @override
   Widget build(BuildContext context) {
     final kolRepo = ref.watch(kolRepositoryProvider);
@@ -29,46 +31,52 @@ class _KOLSelectorState extends ConsumerState<KOLSelector> {
 
     return kolsAsync.when(
       data: (kols) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'KOL',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _showCreateKOLDialog(context, kolRepo),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('新增 KOL'),
-                ),
-              ],
+        // 確保選定的 ID 存在於列表中，否則使用 null
+        final validSelectedId = widget.selectedKolId != null &&
+                kols.any((kol) => kol.id == widget.selectedKolId)
+            ? widget.selectedKolId
+            : null;
+
+        return DropdownButtonFormField<int?>(
+          value: validSelectedId,
+          decoration: const InputDecoration(
+            hintText: '選擇 KOL',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.person),
+          ),
+          items: [
+            const DropdownMenuItem<int?>(
+              value: null,
+              child: Text('請選擇 KOL'),
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int?>(
-              value: widget.selectedKolId,
-              decoration: const InputDecoration(
-                labelText: '選擇 KOL',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+            ...kols.map((kol) => DropdownMenuItem<int?>(
+                  value: kol.id,
+                  child: Text(kol.name),
+                )),
+            const DropdownMenuItem<int?>(
+              value: _newKolId,
+              child: Row(
+                children: [
+                  Icon(Icons.add, size: 18, color: Color(0xFF6366F1)),
+                  SizedBox(width: 8),
+                  Text(
+                    '新 KOL',
+                    style: TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Text('請選擇 KOL'),
-                ),
-                ...kols.map((kol) => DropdownMenuItem<int?>(
-                      value: kol.id,
-                      child: Text(kol.name),
-                    )),
-              ],
-              onChanged: (value) {
-                widget.onChanged?.call(value);
-              },
             ),
           ],
+          onChanged: (value) {
+            if (value == _newKolId) {
+              _showCreateKOLDialog(context, kolRepo);
+            } else {
+              widget.onChanged?.call(value);
+            }
+          },
         );
       },
       loading: () => const CircularProgressIndicator(),
@@ -84,10 +92,13 @@ class _KOLSelectorState extends ConsumerState<KOLSelector> {
     );
 
     if (result != null && mounted) {
-      // 重新載入 KOL 列表
-      ref.invalidate(kolListProvider);
-      // 自動選擇新建立的 KOL
-      widget.onChanged?.call(result.id);
+      // 強制重新載入 KOL 列表並等待完成
+      await ref.refresh(kolListProvider.future);
+      
+      // 確保列表刷新完成後，再自動選擇新建立的 KOL
+      if (mounted) {
+        widget.onChanged?.call(result.id);
+      }
     }
   }
 }
