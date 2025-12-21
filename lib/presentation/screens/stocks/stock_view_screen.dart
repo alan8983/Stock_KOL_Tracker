@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/stock_repository.dart';
 import '../../../domain/providers/repository_providers.dart';
 import '../../../domain/providers/stock_posts_provider.dart';
+import '../../../domain/providers/stock_stats_provider.dart';
 import '../../../data/database/database.dart';
 import '../posts/post_detail_screen.dart';
 import '../kol/kol_view_screen.dart';
@@ -126,25 +127,37 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
   Widget _buildPostsTab() {
     final postsAsync = ref.watch(stockPostsWithDetailsProvider(widget.ticker));
     
-    return postsAsync.when(
-      data: (postsWithDetails) {
-        if (postsWithDetails.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.article_outlined, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  '此投資標的尚無文檔',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(stockPostsWithDetailsProvider(widget.ticker));
+        ref.invalidate(stockPostsProvider(widget.ticker));
+        ref.invalidate(stockStatsProvider(widget.ticker));
+      },
+      child: postsAsync.when(
+        data: (postsWithDetails) {
+          if (postsWithDetails.isEmpty) {
+            return const SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: 400,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        '此投資標的尚無文檔',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          );
-        }
-        
-        return ListView.builder(
+              ),
+            );
+          }
+          
+          return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: postsWithDetails.length,
           itemBuilder: (context, index) {
@@ -207,21 +220,34 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
             );
           },
         );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('載入失敗: $error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.invalidate(stockPostsWithDetailsProvider(widget.ticker)),
-              child: const Text('重試'),
+        },
+        loading: () => const SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: 400,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+        error: (error, stack) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: 400,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('載入失敗: $error'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(stockPostsWithDetailsProvider(widget.ticker)),
+                    child: const Text('重試'),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

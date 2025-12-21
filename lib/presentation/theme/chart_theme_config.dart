@@ -147,4 +147,35 @@ class ChartThemeConfig {
         return 'N'; // Neutral
     }
   }
+
+  /// 轉換為 flutter_chen_kchart 主題配置 Map
+  /// 注意：實際的屬性名稱需要根據 flutter_chen_kchart 的實際 API 進行調整
+  Map<String, dynamic> toKChartTheme() {
+    return {
+      // K線顏色
+      'increasingColor': increasingColor,
+      'decreasingColor': decreasingColor,
+      // 背景和網格
+      'backgroundColor': backgroundColor,
+      'gridLineColor': gridLineColor,
+      'textColor': textColor,
+      // 交易量顏色（如果套件支持）
+      'volumeIncreasingColor': volumeIncreasingColor,
+      'volumeDecreasingColor': volumeDecreasingColor,
+    };
+  }
+
+  /// 創建適合 flutter_chen_kchart 的顏色配置
+  /// 返回一個 Map，包含所有顏色配置
+  Map<String, Color> getKChartColorConfig() {
+    return {
+      'increasing': increasingColor,
+      'decreasing': decreasingColor,
+      'background': backgroundColor,
+      'grid': gridLineColor,
+      'text': textColor,
+      'volumeUp': volumeIncreasingColor,
+      'volumeDown': volumeDecreasingColor,
+    };
+  }
 }

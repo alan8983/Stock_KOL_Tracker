@@ -120,76 +120,99 @@ class _DraftListScreenState extends ConsumerState<DraftListScreen> {
           ),
         ],
       ),
-      body: draftsAsync.when(
-        data: (drafts) {
-          if (drafts.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.drafts, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    '目前沒有草稿',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: drafts.length,
-            itemBuilder: (context, index) {
-              final draft = drafts[index];
-              return DraftCard(
-                draft: draft,
-                isSelected: _selectedDraftIds.contains(draft.id),
-                onSelectionChanged: _isSelectionMode
-                    ? (selected) => _toggleSelection(draft.id, selected)
-                    : null,
-                onTap: _isSelectionMode
-                    ? () => _toggleSelection(
-                        draft.id, !_selectedDraftIds.contains(draft.id))
-                    : () => _selectDraft(draft), // 選擇草稿並返回
-                onDelete: () async {
-                  try {
-                    await ref
-                        .read(draftListProvider.notifier)
-                        .deleteDraft(draft.id);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('已刪除草稿')),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('刪除失敗: $e')),
-                      );
-                    }
-                  }
-                },
-              );
-            },
-          );
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(draftListProvider.notifier).loadDrafts();
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('載入失敗: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(draftListProvider);
-                },
-                child: const Text('重試'),
+        child: draftsAsync.when(
+          data: (drafts) {
+            if (drafts.isEmpty) {
+              return const SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: 400,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.drafts, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          '目前沒有草稿',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              itemCount: drafts.length,
+              itemBuilder: (context, index) {
+                final draft = drafts[index];
+                return DraftCard(
+                  draft: draft,
+                  isSelected: _selectedDraftIds.contains(draft.id),
+                  onSelectionChanged: _isSelectionMode
+                      ? (selected) => _toggleSelection(draft.id, selected)
+                      : null,
+                  onTap: _isSelectionMode
+                      ? () => _toggleSelection(
+                          draft.id, !_selectedDraftIds.contains(draft.id))
+                      : () => _selectDraft(draft), // 選擇草稿並返回
+                  onDelete: () async {
+                    try {
+                      await ref
+                          .read(draftListProvider.notifier)
+                          .deleteDraft(draft.id);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('已刪除草稿')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('刪除失敗: $e')),
+                        );
+                      }
+                    }
+                  },
+                );
+              },
+            );
+          },
+          loading: () => const SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (error, stack) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('載入失敗: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(draftListProvider);
+                      },
+                      child: const Text('重試'),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

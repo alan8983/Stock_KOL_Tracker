@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/draft_state_provider.dart';
+import '../../../domain/providers/post_list_provider.dart';
+import '../../../domain/providers/stock_list_provider.dart';
+import '../../../domain/providers/stock_posts_provider.dart';
+import '../../../domain/providers/stock_stats_provider.dart';
+import '../../../domain/providers/kol_posts_provider.dart';
+import '../../../domain/providers/kol_win_rate_provider.dart';
 import '../../../data/models/draft_form_state.dart';
 import '../../widgets/ticker_autocomplete_field.dart';
 import '../../widgets/sentiment_selector.dart';
@@ -39,11 +45,20 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     await notifier.analyzeContent();
     
     if (mounted) {
+      final state = ref.read(draftStateProvider);
+      
+      // 檢查是否有 JSON 解析錯誤
+      if (state.errorMessage != null && 
+          state.errorMessage!.contains('JSON 解析錯誤')) {
+        // 導航回快速輸入頁，並傳遞錯誤標記
+        Navigator.of(context).pop({'error': true, 'message': state.errorMessage});
+        return;
+      }
+      
       setState(() {
         _isLoading = false;
         
         // 檢查 AI 分析結果中的時間類型，自動切換 Tab
-        final state = ref.read(draftStateProvider);
         if (state.aiResult?.postedAtText != null && 
             state.aiResult!.postedAtText!.isNotEmpty) {
           final isAbsolute = TimeParser.isAbsoluteTime(state.aiResult!.postedAtText);
@@ -75,6 +90,36 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       await notifier.publishPost();
 
       if (mounted) {
+        // 取得建檔的 ticker 和 kolId，用於刷新相關 Provider
+        final draftState = ref.read(draftStateProvider);
+        final ticker = draftState.ticker;
+        final kolId = draftState.kolId;
+
+        // 刷新所有相關的 Provider
+        if (ticker != null && kolId != null) {
+          // 刷新文檔列表
+          ref.read(postListProvider.notifier).loadPosts();
+          
+          // 刷新股票相關 Provider
+          ref.invalidate(stockPostsProvider(ticker));
+          ref.invalidate(stockPostsWithDetailsProvider(ticker));
+          ref.invalidate(stockStatsProvider(ticker));
+          
+          // 刷新股票列表（用於顯示新建立的股票）
+          ref.read(stockListProvider.notifier).loadStocks();
+          
+          // 刷新所有股票的統計（因為可能新增了股票）
+          ref.invalidate(allStockStatsProvider);
+          
+          // 刷新 KOL 相關 Provider
+          ref.invalidate(kolPostsProvider(kolId));
+          ref.invalidate(kolPostsWithDetailsProvider(kolId));
+          ref.invalidate(kolPostsGroupedByStockProvider(kolId));
+          ref.invalidate(kolPostStatsProvider(kolId));
+          ref.invalidate(kolWinRateStatsProvider(kolId));
+          ref.invalidate(allKOLWinRateStatsProvider);
+        }
+
         // 導航到 StockListScreen
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(

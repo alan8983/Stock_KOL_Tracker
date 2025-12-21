@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_chen_kchart/k_chart.dart';
 import '../../domain/providers/stock_price_provider.dart';
 import '../../domain/providers/stock_posts_provider.dart';
 import '../../data/database/database.dart';
 import '../theme/chart_theme_config.dart';
 import 'sentiment_marker.dart';
-import 'fl_chart_controller.dart';
-import 'candles_painter.dart';
-import 'volume_painter.dart';
-import 'sentiment_markers_painter.dart';
+import 'kchart_state_adapter.dart';
+import 'kchart_sentiment_markers_painter.dart';
+import '../utils/candle_aggregator.dart';
+import 'chart_interval_selector.dart';
+
 
 /// 股價圖表組件（K線圖 + 交易量 + 情緒標記）
-/// 使用 CustomPainter 完全自定義實現
+/// 使用 flutter_chen_kchart 套件實現
 class StockChartWidget extends ConsumerStatefulWidget {
   final String ticker;
   final ChartThemeConfig theme;
@@ -27,17 +29,23 @@ class StockChartWidget extends ConsumerStatefulWidget {
 }
 
 class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
-  late FlChartController _controller;
+  late KChartController _kchartController;
+  late KChartStateAdapter _stateAdapter;
+  
+  // K線間隔和時間範圍狀態
+  CandleInterval _selectedInterval = CandleInterval.daily;
+  TimeRange _selectedRange = TimeRange.oneYear;
 
   @override
   void initState() {
     super.initState();
-    _controller = FlChartController();
+    _kchartController = KChartController();
+    _stateAdapter = KChartStateAdapter();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _stateAdapter.dispose();
     super.dispose();
   }
 
@@ -106,21 +114,53 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
 
   Widget _buildChart(
       BuildContext context, List<StockPrice> prices, List<Post> posts) {
-    // 更新控制器數據
-    _controller.updateData(prices, posts);
+    // 1. 根據時間範圍過濾數據
+    final startDate = ChartIntervalSelector.calculateStartDate(_selectedRange);
+    final filteredPrices = prices.where((price) {
+      final priceDate = DateTime(price.date.year, price.date.month, price.date.day);
+      return priceDate.isAfter(startDate) || priceDate.isAtSameMomentAs(startDate);
+    }).toList();
+
+    // 2. 根據K線間隔聚合數據
+    final aggregatedPrices = CandleAggregator.aggregate(filteredPrices, _selectedInterval);
+
+    // 3. 更新狀態適配器數據
+    _stateAdapter.updateData(aggregatedPrices, posts);
+    
+    // 4. 獲取 KLineEntity 列表
+    final kchartData = _stateAdapter.candles;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         // 計算圖表高度（固定為400像素，確保有足夠的可視空間）
-        final chartHeight = 400.0;
+        const chartHeight = 400.0;
         final chartSize = Size(constraints.maxWidth, chartHeight);
 
         // 更新圖表尺寸
-        _controller.updateSize(chartSize);
+        _stateAdapter.updateSize(chartSize);
 
         return SingleChildScrollView(
           child: Column(
             children: [
+            // K線間隔和時間範圍選擇器
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: ChartIntervalSelector(
+                selectedInterval: _selectedInterval,
+                selectedRange: _selectedRange,
+                onIntervalChanged: (interval) {
+                  setState(() {
+                    _selectedInterval = interval;
+                  });
+                },
+                onRangeChanged: (range) {
+                  setState(() {
+                    _selectedRange = range;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
             // 圖表說明
             _buildLegend(),
             const SizedBox(height: 8),
@@ -128,44 +168,64 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
             SizedBox(
               height: chartHeight,
               width: constraints.maxWidth,
-              child: GestureDetector(
-                onScaleStart: _controller.handleScaleStart,
-                onScaleUpdate: _controller.handleScaleUpdate,
-                onScaleEnd: _controller.handleScaleEnd,
-                child: ListenableBuilder(
-                  listenable: _controller,
-                  builder: (context, _) {
-                    return Stack(
-                      children: [
-                        // 1. K 線圖層（包含網格和座標軸）
-                        CustomPaint(
-                          size: chartSize,
-                          painter: CandlesPainter(
-                            controller: _controller,
-                            theme: widget.theme,
-                          ),
-                        ),
-                        // 2. 交易量圖層
-                        CustomPaint(
-                          size: chartSize,
-                          painter: VolumePainter(
-                            controller: _controller,
-                            theme: widget.theme,
-                          ),
-                        ),
-                        // 3. 情緒標記圖層
-                        if (posts.isNotEmpty)
-                          CustomPaint(
+              child: ListenableBuilder(
+                listenable: _stateAdapter,
+                builder: (context, _) {
+                  return Stack(
+                    children: [
+                      // 1. K線圖（使用 flutter_chen_kchart 套件）
+                      // K線圖已經內建了手勢處理（縮放、平移），不需要額外包裝
+                      KChartWidget(
+                        kchartData,
+                        controller: _kchartController,
+                        mainState: MainState.MA,
+                        isLine: false, // 使用 K線圖而非線圖
+                        volHidden: false, // 顯示交易量
+                        secondaryState: SecondaryState.NONE, // 不顯示副圖指標
+                        isTrendLine: false, // 不使用趨勢線模式
+                        enableTheme: true,
+                        minScale: 0.1,
+                        maxScale: 5.0,
+                        scaleSensitivity: 2.5,
+                        enablePinchZoom: true,
+                        enableScrollZoom: true,
+                        onScaleChanged: (scale) {
+                          // 縮放變化時，更新狀態適配器
+                          _stateAdapter.setScale(scale);
+                        },
+                        isOnDrag: (isDragging) {
+                          // 拖拽結束後，使用當前縮放比例重新計算可見範圍
+                          // 這有助於在拖拽後同步標記位置
+                          if (!isDragging) {
+                            final currentScale = _kchartController.currentScale;
+                            _stateAdapter.setScale(currentScale);
+                          }
+                        },
+                        onLoadMore: (isRightEdge) {
+                          // 檢測邊界情況，更新可見範圍
+                          // isRightEdge = true 表示滾動到右側邊界（最新數據）
+                          // isRightEdge = false 表示滾動到左側邊界（最舊數據）
+                          if (isRightEdge) {
+                            _stateAdapter.setToLatest();
+                          } else {
+                            _stateAdapter.setToOldest();
+                          }
+                        },
+                      ),
+                      // 2. 情緒標記圖層（使用 IgnorePointer 確保不攔截手勢）
+                      if (posts.isNotEmpty)
+                        IgnorePointer(
+                          child: CustomPaint(
                             size: chartSize,
-                            painter: SentimentMarkersPainter(
-                              controller: _controller,
+                            painter: KChartSentimentMarkersPainter(
+                              stateAdapter: _stateAdapter,
                               theme: widget.theme,
                             ),
                           ),
-                      ],
-                    );
-                  },
-                ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
             // 刷新按鈕

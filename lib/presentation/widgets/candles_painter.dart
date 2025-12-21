@@ -136,8 +136,8 @@ class CandlesPainter extends CustomPainter {
       final price = controller.maxPrice - (controller.maxPrice - controller.minPrice) * ratio;
       final y = candleTop + candleHeight * ratio;
 
-      // 格式化價格（保留兩位小數）
-      final priceText = price.toStringAsFixed(2);
+      // 格式化價格（最多保留3位小數，自動去掉尾部0）
+      final priceText = _formatPrice(price);
 
       _drawText(
         canvas,
@@ -148,6 +148,22 @@ class CandlesPainter extends CustomPainter {
         TextAlign.left,
       );
     }
+  }
+
+  /// 格式化價格，最多顯示3位小數，自動去掉尾部0
+  String _formatPrice(double price) {
+    // 先四捨五入到3位小數
+    final rounded = (price * 1000).round() / 1000.0;
+    
+    // 轉換為字符串，最多3位小數
+    final formatted = rounded.toStringAsFixed(3);
+    
+    // 去掉尾部多餘的0和小數點
+    if (formatted.contains('.')) {
+      return formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+    
+    return formatted;
   }
 
   /// 繪製日期軸（mmm-dd 格式）

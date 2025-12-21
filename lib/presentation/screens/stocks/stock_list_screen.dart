@@ -80,35 +80,46 @@ class _StockListScreenState extends ConsumerState<StockListScreen>
             ),
         ],
       ),
-      body: stocksAsync.when(
-        data: (stocks) {
-          if (stocks.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.show_chart, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isSearching ? '找不到符合的投資標的' : '目前沒有投資標的',
-                    style: const TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  if (!_isSearching) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      '投資標的會在建檔時自動新增',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(stockListProvider.notifier).loadStocks();
+          ref.invalidate(allStockStatsProvider);
+        },
+        child: stocksAsync.when(
+          data: (stocks) {
+            if (stocks.isEmpty) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: 400,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.show_chart, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _isSearching ? '找不到符合的投資標的' : '目前沒有投資標的',
+                          style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                        if (!_isSearching) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            '投資標的會在建檔時自動新增',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            );
-          }
+                  ),
+                ),
+              );
+            }
 
-          // 過濾掉「臨時」股票 (ticker='TEMP')
-          final validStocks = stocks.where((stock) => stock.ticker != 'TEMP').toList();
+            // 過濾掉「臨時」股票 (ticker='TEMP')
+            final validStocks = stocks.where((stock) => stock.ticker != 'TEMP').toList();
 
-          return ListView.builder(
+            return ListView.builder(
             itemCount: validStocks.length,
             itemBuilder: (context, index) {
               final stock = validStocks[index];
@@ -212,23 +223,36 @@ class _StockListScreenState extends ConsumerState<StockListScreen>
               );
             },
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('載入失敗: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(stockListProvider);
-                },
-                child: const Text('重試'),
+          },
+          loading: () => const SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (error, stack) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('載入失敗: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(stockListProvider);
+                      },
+                      child: const Text('重試'),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

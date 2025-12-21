@@ -20,6 +20,7 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
   final KOLRepository _kolRepository;
   final GeminiService _geminiService;
   int? _draftId;
+  int? _quickDraftId; // 追蹤快速草稿 ID
 
   DraftStateNotifier(
     this._postRepository,
@@ -149,6 +150,15 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
       );
       
       print('✅ DraftStateNotifier: AI分析完成並已更新狀態');
+    } on JsonParseException catch (e) {
+      // JSON 解析失敗的特殊處理
+      print('❌ DraftStateNotifier: JSON 解析失敗');
+      print('   錯誤: $e');
+      
+      state = state.copyWith(
+        isAnalyzing: false,
+        errorMessage: 'AI 分析失敗: JSON 解析錯誤，請重試',
+      );
     } catch (e, stackTrace) {
       print('❌ DraftStateNotifier: AI分析失敗');
       print('   錯誤: $e');
@@ -246,6 +256,7 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     try {
       // 使用預設值建立快速草稿
       final draftId = await _postRepository.createQuickDraft(content.trim());
+      _quickDraftId = draftId; // 儲存快速草稿 ID
       return draftId;
     } catch (e) {
       // 記錄錯誤但不拋出，避免影響用戶體驗
@@ -254,9 +265,15 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     }
   }
 
+  /// 取得當前快速草稿 ID
+  int? getCurrentQuickDraftId() {
+    return _quickDraftId;
+  }
+
   /// 重置狀態
   void reset() {
     _draftId = null;
+    _quickDraftId = null; // 清除快速草稿 ID
     state = const DraftFormState();
   }
 }

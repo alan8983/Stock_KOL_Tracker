@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/draft_state_provider.dart';
@@ -14,9 +15,14 @@ class QuickInputScreen extends ConsumerStatefulWidget {
   ConsumerState<QuickInputScreen> createState() => _QuickInputScreenState();
 }
 
-class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with AutomaticKeepAliveClientMixin {
+class _QuickInputScreenState extends ConsumerState<QuickInputScreen> 
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final _textController = TextEditingController();
   bool _hasText = false;
+  Timer? _autoSaveTimer;
+  int? _lastSavedDraftId;
+  String _lastSavedContent = '';
+  AppLifecycleState? _lastLifecycleState;
 
   @override
   bool get wantKeepAlive => true; // 保持狀態，避免Tab切換時重建
@@ -24,17 +30,131 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _textController.addListener(() {
       setState(() {
         _hasText = _textController.text.isNotEmpty;
       });
     });
+    _startAutoSaveTimer();
+  }
+
+  void _syncContentToProvider() {
+    // 同步更新 Provider 狀態
+    final notifier = ref.read(draftStateProvider.notifier);
+    notifier.updateContent(_textController.text);
   }
 
   @override
   void dispose() {
+    _stopAutoSaveTimer();
+    WidgetsBinding.instance.removeObserver(this);
     _textController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    _lastLifecycleState = state;
+    
+    // 當 APP 進入背景或終止時，立即儲存
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _autoSaveDraft();
+      _stopAutoSaveTimer();
+    } else if (state == AppLifecycleState.resumed) {
+      // 當 APP 恢復時，重新啟動定期儲存
+      _startAutoSaveTimer();
+    }
+  }
+
+  /// 啟動定期自動儲存 Timer（每 30 秒）
+  void _startAutoSaveTimer() {
+    _stopAutoSaveTimer(); // 先停止現有的 Timer
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _autoSaveDraft();
+    });
+  }
+
+  /// 停止定期自動儲存 Timer
+  void _stopAutoSaveTimer() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
+  }
+
+  /// 自動儲存草稿
+  Future<void> _autoSaveDraft() async {
+    final content = _textController.text.trim();
+    
+    // 檢查內容是否為空或與上次儲存的內容相同
+    if (content.isEmpty || content == _lastSavedContent) {
+      return;
+    }
+
+    try {
+      // 先同步內容到 Provider
+      _syncContentToProvider();
+      
+      final notifier = ref.read(draftStateProvider.notifier);
+      final draftId = await notifier.saveQuickDraft(content);
+      
+      if (draftId != null && mounted) {
+        _lastSavedDraftId = draftId;
+        _lastSavedContent = content;
+        print('✅ 自動儲存草稿成功 (ID: $draftId)');
+      }
+    } catch (e) {
+      // 記錄錯誤但不中斷用戶體驗
+      print('⚠️ 自動儲存草稿失敗: $e');
+    }
+  }
+
+  /// 手動儲存草稿
+  Future<void> _saveAsDraft() async {
+    final content = _textController.text.trim();
+    
+    if (content.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('請輸入內容後再儲存為草稿'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      // 先同步內容到 Provider
+      _syncContentToProvider();
+      
+      final notifier = ref.read(draftStateProvider.notifier);
+      final draftId = await notifier.saveQuickDraft(content);
+      
+      if (draftId != null && mounted) {
+        _lastSavedDraftId = draftId;
+        _lastSavedContent = content;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('草稿已儲存'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('儲存失敗: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   /// 從草稿數據填入表單
@@ -50,6 +170,9 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
       if (draft.sentiment != null) notifier.updateSentiment(draft.sentiment!);
       if (draft.kolId != null) notifier.updateKOL(draft.kolId!);
       if (draft.postedAt != null) notifier.updatePostedAtFromAbsolute(draft.postedAt!);
+      
+      // 更新最後儲存的內容，避免立即重複儲存
+      _lastSavedContent = draft.content;
     }
   }
 
@@ -65,6 +188,48 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
     if (draftData != null && mounted) {
       _loadFromDraft(draftData);
     }
+  }
+
+  /// 顯示錯誤對話框
+  Future<void> _showErrorDialog(String errorMessage) async {
+    if (!mounted) return;
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text('AI 分析失敗'),
+            ],
+          ),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('取消'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // 重新嘗試分析
+                _onAnalyze();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('重送'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// 分析並進入結果頁面
@@ -112,12 +277,25 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
           ),
         );
         
-        // 如果建檔成功，清空表單
-        if (result == true && mounted) {
-          setState(() {
-            _textController.clear();
-          });
-          draftState.reset();
+        // 檢查返回結果
+        if (result != null && mounted) {
+          // 如果返回的是錯誤資訊
+          if (result is Map && result['error'] == true) {
+            // 顯示錯誤對話框
+            _showErrorDialog(result['message'] as String? ?? 'AI 分析失敗');
+            return;
+          }
+          
+          // 如果建檔成功，清空表單
+          if (result == true) {
+            setState(() {
+              _textController.clear();
+            });
+            draftState.reset();
+            // 重置自動儲存相關變數
+            _lastSavedContent = '';
+            _lastSavedDraftId = null;
+          }
         }
       }
     } catch (e) {
@@ -190,7 +368,7 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
                         ),
                       ),
                     ),
-                    // 固定在底部的分析按鈕
+                    // 固定在底部的按鈕區域（存為草稿 + 分析）
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -205,56 +383,109 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
                       ),
                       child: SafeArea(
                         top: false,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF6366F1), // Indigo
-                                Color(0xFF8B5CF6), // Purple
-                              ],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6366F1).withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: _onAnalyze,
-                              borderRadius: BorderRadius.circular(30),
+                        child: Row(
+                          children: [
+                            // 存為草稿按鈕（左側，40%）
+                            Expanded(
+                              flex: 2,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                alignment: Alignment.center,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
-                                      Icons.auto_awesome,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      '分析',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: const Color(0xFF6366F1),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _saveAsDraft,
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      alignment: Alignment.center,
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.save_outlined,
+                                            color: Color(0xFF6366F1),
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            '存為草稿',
+                                            style: TextStyle(
+                                              color: Color(0xFF6366F1),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            // 分析按鈕（右側，60%）
+                            Expanded(
+                              flex: 3,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF6366F1), // Indigo
+                                      Color(0xFF8B5CF6), // Purple
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _onAnalyze,
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      alignment: Alignment.center,
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.auto_awesome,
+                                            color: Colors.white,
+                                            size: 22,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            '分析',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -295,45 +526,88 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen> with Automa
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF6366F1).withOpacity(0.5),
-                                const Color(0xFF8B5CF6).withOpacity(0.5),
-                              ],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              alignment: Alignment.center,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.auto_awesome,
-                                    color: Colors.white.withOpacity(0.7),
-                                    size: 22,
+                        Row(
+                          children: [
+                            // 存為草稿按鈕（左側，40%，禁用狀態）
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                                    width: 2,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '分析',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.save_outlined,
+                                        color: const Color(0xFF6366F1).withOpacity(0.5),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '存為草稿',
+                                        style: TextStyle(
+                                          color: const Color(0xFF6366F1).withOpacity(0.5),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
+                            // 分析按鈕（右側，60%，禁用狀態）
+                            Expanded(
+                              flex: 3,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF6366F1).withOpacity(0.5),
+                                      const Color(0xFF8B5CF6).withOpacity(0.5),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.auto_awesome,
+                                        color: Colors.white.withOpacity(0.7),
+                                        size: 22,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '分析',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.7),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

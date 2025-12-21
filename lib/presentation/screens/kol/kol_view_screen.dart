@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/kol_repository.dart';
 import '../../../domain/providers/repository_providers.dart';
 import '../../../domain/providers/kol_posts_provider.dart';
+import '../../../domain/providers/kol_win_rate_provider.dart';
 import '../../../data/database/database.dart';
 import '../posts/post_detail_screen.dart';
 import '../stocks/stock_view_screen.dart';
@@ -118,25 +119,39 @@ class _KOLViewScreenState extends ConsumerState<KOLViewScreen>
   Widget _buildOverviewTab() {
     final groupedPostsAsync = ref.watch(kolPostsGroupedByStockProvider(widget.kolId));
     
-    return groupedPostsAsync.when(
-      data: (groupedPosts) {
-        if (groupedPosts.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.article_outlined, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  '此 KOL 尚無文檔',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(kolPostsGroupedByStockProvider(widget.kolId));
+        ref.invalidate(kolPostsProvider(widget.kolId));
+        ref.invalidate(kolPostsWithDetailsProvider(widget.kolId));
+        ref.invalidate(kolPostStatsProvider(widget.kolId));
+        ref.invalidate(kolWinRateStatsProvider(widget.kolId));
+      },
+      child: groupedPostsAsync.when(
+        data: (groupedPosts) {
+          if (groupedPosts.isEmpty) {
+            return const SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: 400,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        '此 KOL 尚無文檔',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          );
-        }
-        
-        return ListView.builder(
+              ),
+            );
+          }
+          
+          return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: groupedPosts.length,
           itemBuilder: (context, index) {
@@ -144,21 +159,34 @@ class _KOLViewScreenState extends ConsumerState<KOLViewScreen>
             return _buildStockGroup(group);
           },
         );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('載入失敗: $error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.invalidate(kolPostsGroupedByStockProvider(widget.kolId)),
-              child: const Text('重試'),
+        },
+        loading: () => const SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: 400,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+        error: (error, stack) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: 400,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('載入失敗: $error'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(kolPostsGroupedByStockProvider(widget.kolId)),
+                    child: const Text('重試'),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

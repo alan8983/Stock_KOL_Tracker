@@ -3,6 +3,18 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../../models/analysis_result.dart';
 
+/// JSON 解析失敗異常
+/// 當 Gemini API 回應的 JSON 無法解析時拋出此異常
+class JsonParseException implements Exception {
+  final String message;
+  final String? jsonString;
+
+  JsonParseException(this.message, [this.jsonString]);
+
+  @override
+  String toString() => message;
+}
+
 class GeminiService {
   final GenerativeModel _model;
 
@@ -83,12 +95,12 @@ class GeminiService {
             print('✅ GeminiService: JSON 修復成功');
           } catch (e2) {
             print('❌ GeminiService: JSON 修復後仍無法解析: $e2');
-            // 嘗試從不完整的 JSON 中提取部分資料
-            return _extractPartialResult(jsonString);
+            // JSON 修復後仍無法解析，直接拋出異常，不嘗試提取部分資料
+            throw JsonParseException('JSON 解析失敗: 無法解析或提取資料', jsonString);
           }
         } else {
-          // 無法修復，嘗試提取部分資料
-          return _extractPartialResult(jsonString);
+          // 無法修復 JSON，直接拋出異常，不嘗試提取部分資料
+          throw JsonParseException('JSON 解析失敗: 無法解析或提取資料', jsonString);
         }
       }
       
@@ -387,7 +399,8 @@ $text
   }
 
   /// 從不完整的 JSON 中提取部分可用的資料
-  AnalysisResult _extractPartialResult(String jsonString) {
+  /// 如果無法提取任何資料，返回 null
+  AnalysisResult? _extractPartialResult(String jsonString) {
     print('🔧 GeminiService: 嘗試從不完整的 JSON 中提取部分資料...');
     
     try {
@@ -457,9 +470,9 @@ $text
       print('❌ GeminiService: 提取部分資料時發生錯誤: $e');
     }
     
-    // 如果無法提取任何資料，返回空結果
-    print('⚠️ GeminiService: 無法從不完整的 JSON 中提取資料，返回空結果');
-    return AnalysisResult.empty();
+    // 如果無法提取任何資料，返回 null
+    print('⚠️ GeminiService: 無法從不完整的 JSON 中提取資料');
+    return null;
   }
 
   // 測試用入口，方便驗證 JSON 擷取行為

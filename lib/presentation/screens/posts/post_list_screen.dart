@@ -38,64 +38,87 @@ class _PostListScreenState extends ConsumerState<PostListScreen>
           ),
         ],
       ),
-      body: postsAsync.when(
-        data: (postsWithKOL) {
-          if (postsWithKOL.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.article_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    '目前沒有已發布的文檔',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '草稿發布後會顯示在此處',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: postsWithKOL.length,
-            itemBuilder: (context, index) {
-              final postWithKOL = postsWithKOL[index];
-              return PostCard(
-                postWithKOL: postWithKOL,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PostDetailScreen(
-                        postId: postWithKOL.post.id,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(postListProvider.notifier).loadPosts();
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('載入失敗: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(postListProvider);
-                },
-                child: const Text('重試'),
+        child: postsAsync.when(
+          data: (postsWithKOL) {
+            if (postsWithKOL.isEmpty) {
+              return const SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: 400,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          '目前沒有已發布的文檔',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '草稿發布後會顯示在此處',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              itemCount: postsWithKOL.length,
+              itemBuilder: (context, index) {
+                final postWithKOL = postsWithKOL[index];
+                return PostCard(
+                  postWithKOL: postWithKOL,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PostDetailScreen(
+                          postId: postWithKOL.post.id,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+          loading: () => const SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (error, stack) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('載入失敗: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(postListProvider);
+                      },
+                      child: const Text('重試'),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

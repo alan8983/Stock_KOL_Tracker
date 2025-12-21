@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/draft_state_provider.dart';
 import '../../../domain/providers/repository_providers.dart';
+import '../../../domain/providers/post_list_provider.dart';
+import '../../../domain/providers/stock_list_provider.dart';
+import '../../../domain/providers/stock_posts_provider.dart';
+import '../../../domain/providers/stock_stats_provider.dart';
+import '../../../domain/providers/kol_posts_provider.dart';
+import '../../../domain/providers/kol_win_rate_provider.dart';
 import '../../../core/utils/datetime_formatter.dart';
 import '../../widgets/confirm_dialog.dart';
 
@@ -194,8 +200,38 @@ class PreviewScreen extends ConsumerWidget {
 
                       if (confirmed && context.mounted) {
                         try {
+                          // 在建檔前取得 ticker 和 kolId，因為 reset() 會清空 state
+                          final currentState = ref.read(draftStateProvider);
+                          final ticker = currentState.ticker;
+                          final kolId = currentState.kolId;
+                          
                           await notifier.publishPost();
                           if (context.mounted) {
+                            // 刷新所有相關的 Provider
+                            if (ticker != null && kolId != null) {
+                              // 刷新文檔列表
+                              ref.read(postListProvider.notifier).loadPosts();
+                              
+                              // 刷新股票相關 Provider
+                              ref.invalidate(stockPostsProvider(ticker));
+                              ref.invalidate(stockPostsWithDetailsProvider(ticker));
+                              ref.invalidate(stockStatsProvider(ticker));
+                              
+                              // 刷新股票列表（用於顯示新建立的股票）
+                              ref.read(stockListProvider.notifier).loadStocks();
+                              
+                              // 刷新所有股票的統計（因為可能新增了股票）
+                              ref.invalidate(allStockStatsProvider);
+                              
+                              // 刷新 KOL 相關 Provider
+                              ref.invalidate(kolPostsProvider(kolId));
+                              ref.invalidate(kolPostsWithDetailsProvider(kolId));
+                              ref.invalidate(kolPostsGroupedByStockProvider(kolId));
+                              ref.invalidate(kolPostStatsProvider(kolId));
+                              ref.invalidate(kolWinRateStatsProvider(kolId));
+                              ref.invalidate(allKOLWinRateStatsProvider);
+                            }
+                            
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('記錄已建立'),

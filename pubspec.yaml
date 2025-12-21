@@ -38,7 +38,8 @@ dependencies:
 
   # UI/Charts (Phase 4)
   fl_chart: ^0.66.2
-  # candlesticks: ^2.1.0  # 已移除，改用 CustomPainter 自定義實現
+  flutter_chen_kchart: ^2.4.1  # K線圖套件（免費版）
+  # candlesticks: ^2.1.0  # 已移除，改用 flutter_chen_kchart
 
 dev_dependencies:
   flutter_test:

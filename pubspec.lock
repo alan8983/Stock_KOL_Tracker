@@ -294,6 +294,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_chen_kchart:
+    dependency: "direct main"
+    description:
+      name: flutter_chen_kchart
+      sha256: f83bce20dde53d49737fd91a5e69c80aa4cb537e68affc2c50cb1b7f317dc2c9
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.1"
   flutter_dotenv:
     dependency: "direct main"
     description:

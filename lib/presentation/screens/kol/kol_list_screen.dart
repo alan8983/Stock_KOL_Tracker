@@ -94,35 +94,46 @@ class _KOLListScreenState extends ConsumerState<KOLListScreen> with AutomaticKee
             ),
         ],
       ),
-      body: kolsAsync.when(
-        data: (kols) {
-          if (kols.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.person_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isSearching ? '找不到符合的 KOL' : '目前沒有 KOL',
-                    style: const TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  if (!_isSearching) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      '點擊右下角按鈕新增 KOL',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(kolListProvider.notifier).loadKOLs();
+          ref.invalidate(allKOLWinRateStatsProvider);
+        },
+        child: kolsAsync.when(
+          data: (kols) {
+            if (kols.isEmpty) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: 400,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.person_outline, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _isSearching ? '找不到符合的 KOL' : '目前沒有 KOL',
+                          style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                        if (!_isSearching) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            '點擊右下角按鈕新增 KOL',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            );
-          }
+                  ),
+                ),
+              );
+            }
 
-          // 過濾掉「未分類」KOL (id=1)
-          final validKols = kols.where((kol) => kol.id != 1).toList();
+            // 過濾掉「未分類」KOL (id=1)
+            final validKols = kols.where((kol) => kol.id != 1).toList();
 
-          return ListView.builder(
+            return ListView.builder(
             itemCount: validKols.length,
             itemBuilder: (context, index) {
               final kol = validKols[index];
@@ -209,23 +220,36 @@ class _KOLListScreenState extends ConsumerState<KOLListScreen> with AutomaticKee
               );
             },
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('載入失敗: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(kolListProvider);
-                },
-                child: const Text('重試'),
+          },
+          loading: () => const SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (error, stack) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: 400,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('載入失敗: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(kolListProvider);
+                      },
+                      child: const Text('重試'),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
