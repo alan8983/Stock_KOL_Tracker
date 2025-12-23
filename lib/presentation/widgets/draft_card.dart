@@ -2,219 +2,212 @@ import 'package:flutter/material.dart';
 import '../../data/database/database.dart';
 import '../../core/utils/datetime_formatter.dart';
 
-/// 草稿卡片元件
-/// 支援長按滑動刪除和 Dismissible 滑動刪除
+/// 草稿卡片元件（Email Inbox 樣式）
+/// 支援向左滑動顯示刪除按鈕，向右滑動回歸原位
 class DraftCard extends StatefulWidget {
   final Post draft;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
-  final bool isSelected;
-  final ValueChanged<bool>? onSelectionChanged;
 
   const DraftCard({
     super.key,
     required this.draft,
     this.onTap,
     this.onDelete,
-    this.isSelected = false,
-    this.onSelectionChanged,
   });
 
   @override
   State<DraftCard> createState() => _DraftCardState();
 }
 
-class _DraftCardState extends State<DraftCard> {
-  bool _isSlidOut = false;
+class _DraftCardState extends State<DraftCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+  
+  double _dragExtent = 0.0;
+  bool _isDeleteRevealed = false;
+  
+  static const double _deleteButtonWidth = 80.0;
+  static const double _swipeThreshold = 60.0;
 
-  void _handleLongPress() {
-    // 在多選模式下禁用長按滑動功能
-    if (widget.onSelectionChanged != null) {
-      return;
-    }
-    
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
     setState(() {
-      _isSlidOut = true;
+      _dragExtent += details.primaryDelta ?? 0;
+      // 限制向左滑動的範圍，不能超過刪除按鈕寬度
+      _dragExtent = _dragExtent.clamp(-_deleteButtonWidth, 0.0);
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    // 如果滑動距離超過閾值，顯示刪除按鈕
+    if (_dragExtent < -_swipeThreshold) {
+      _animateTo(-_deleteButtonWidth);
+      _isDeleteRevealed = true;
+    } else {
+      // 否則回歸原位
+      _animateTo(0.0);
+      _isDeleteRevealed = false;
+    }
+  }
+
+  void _animateTo(double target) {
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(_dragExtent, 0),
+      end: Offset(target, 0),
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    _controller.forward(from: 0).then((_) {
+      setState(() {
+        _dragExtent = target;
+      });
     });
   }
 
   void _handleTap() {
-    if (_isSlidOut) {
-      // 如果已滑出，恢復原狀
-      setState(() {
-        _isSlidOut = false;
-      });
+    if (_isDeleteRevealed) {
+      // 如果刪除按鈕已顯示，點擊卡片恢復原位
+      _animateTo(0.0);
+      _isDeleteRevealed = false;
     } else {
-      // 如果未滑出，執行原本的 onTap 行為
       widget.onTap?.call();
     }
   }
 
   void _handleDeleteTap() {
-    setState(() {
-      _isSlidOut = false;
-    });
     widget.onDelete?.call();
+  }
+
+  /// 取得預覽文字（2-3行）
+  String _getContentPreview() {
+    final content = widget.draft.content;
+    // 限制最多顯示 150 個字元
+    if (content.length > 150) {
+      return '${content.substring(0, 150)}...';
+    }
+    return content;
   }
 
   @override
   Widget build(BuildContext context) {
-    final contentPreview = widget.draft.content.length > 100
-        ? '${widget.draft.content.substring(0, 100)}...'
-        : widget.draft.content;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
-        final slideDistance = screenWidth * 0.25; // 25% 寬度
-        final deleteButtonWidth = slideDistance;
-
-        return Dismissible(
-          key: Key('draft_${widget.draft.id}'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            color: Colors.red,
-            child: const Icon(Icons.delete, color: Colors.white),
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade200,
+            width: 1,
           ),
-          onDismissed: (_) {
-            widget.onDelete?.call();
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: IntrinsicHeight(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // 刪除按鈕（右側，淡紅色背景）
-                  Positioned(
-                    right: 16, // 與 Card 的 margin 對齊
-                    top: 0,
-                    bottom: 0,
-                    width: deleteButtonWidth,
-                    child: GestureDetector(
-                      onTap: _handleDeleteTap,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFCDD2), // 淡紅色
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.delete_outline,
-                                color: Colors.red.shade700,
-                                size: 28,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '刪除',
-                                style: TextStyle(
-                                  color: Colors.red.shade700,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+        ),
+      ),
+      child: Stack(
+        children: [
+          // 紅色刪除按鈕背景（右側）
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: _deleteButtonWidth,
+            child: GestureDetector(
+              onTap: _handleDeleteTap,
+              child: Container(
+                color: const Color(0xFFD32F2F), // 深紅色
+                child: const Center(
+                  child: Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                    size: 28,
                   ),
-                  // 卡片內容（可滑動）
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                    left: _isSlidOut ? -slideDistance : 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onLongPress: _handleLongPress,
-                      child: Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        child: InkWell(
-                          onTap: _handleTap,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                if (widget.onSelectionChanged != null)
-                                  Checkbox(
-                                    value: widget.isSelected,
-                                    onChanged: (value) =>
-                                        widget.onSelectionChanged?.call(value ?? false),
-                                  ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Chip(
-                                            label: Text(
-                                              widget.draft.sentiment,
-                                              style: const TextStyle(fontSize: 12),
-                                            ),
-                                            backgroundColor: _getSentimentColor(widget.draft.sentiment)
-                                                .withOpacity(0.2),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            widget.draft.stockTicker,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        contentPreview,
-                                        style: const TextStyle(fontSize: 14),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        DateTimeFormatter.formatRelative(widget.draft.postedAt),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        );
-      },
+          // 可滑動的卡片內容
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final offset = _controller.isAnimating
+                  ? _slideAnimation.value.dx
+                  : _dragExtent;
+              return Transform.translate(
+                offset: Offset(offset, 0),
+                child: child,
+              );
+            },
+            child: GestureDetector(
+              onHorizontalDragUpdate: _handleDragUpdate,
+              onHorizontalDragEnd: _handleDragEnd,
+              onTap: _handleTap,
+              child: Container(
+                color: theme.scaffoldBackgroundColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 左側：草稿內容（2-3行）
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getContentPreview(),
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade800,
+                              height: 1.4,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // 右側：編輯時間
+                    Text(
+                      DateTimeFormatter.formatRelative(widget.draft.createdAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  Color _getSentimentColor(String sentiment) {
-    switch (sentiment) {
-      case 'Bullish':
-        return Colors.green;
-      case 'Bearish':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
   }
 }

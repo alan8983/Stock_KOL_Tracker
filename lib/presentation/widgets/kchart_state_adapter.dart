@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_chen_kchart/k_chart.dart';
 import '../../data/database/database.dart';
@@ -44,6 +45,12 @@ class KChartStateAdapter extends ChangeNotifier {
   // 偏移量（用於平移）
   double _offset = 0.0;
 
+  // 交互狀態和 Marker 可見性控制
+  bool _isInteracting = false;
+  bool _markersVisible = true;
+  Timer? _debounceTimer;
+  bool _isAtBoundary = true; // 是否在邊界位置
+
   // Getters
   List<KLineEntity> get candles => _candles;
   List<KChartData> get kchartData => _kchartData; // 用於日期匹配
@@ -57,6 +64,8 @@ class KChartStateAdapter extends ChangeNotifier {
   double get maxVolume => _maxVolume;
   double get scale => _scale;
   double get offset => _offset;
+  bool get markersVisible => _markersVisible;
+  bool get isAtBoundary => _isAtBoundary;
 
   /// 更新數據
   void updateData(List<StockPrice> prices, List<Post> posts) {
@@ -347,8 +356,45 @@ class KChartStateAdapter extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 設置交互狀態（從 isOnDrag/onScaleChanged 調用）
+  /// 當用戶開始交互時隱藏 Marker，結束交互後 500ms 重新顯示
+  void setInteracting(bool interacting) {
+    _isInteracting = interacting;
+    if (interacting) {
+      // 開始交互：隱藏 Marker
+      _markersVisible = false;
+      _debounceTimer?.cancel();
+      notifyListeners();
+    } else {
+      // 結束交互：啟動防抖 Timer
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(Duration(milliseconds: 500), () {
+        _markersVisible = true;
+        notifyListeners();
+      });
+    }
+  }
+
+  /// 設置邊界狀態（從 onLoadMore 調用）
+  /// 當滾動到邊界時，更新可見範圍並標記為邊界位置
+  void setBoundaryState(bool isRightEdge) {
+    _isAtBoundary = true;
+    if (isRightEdge) {
+      setToLatest();
+    } else {
+      setToOldest();
+    }
+  }
+
+  /// 離開邊界（滾動到中間位置）
+  /// 當開始拖拽時調用，表示可能不在邊界位置
+  void leaveBoundary() {
+    _isAtBoundary = false;
+  }
+
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _candles = [];
     _posts = [];
     super.dispose();

@@ -209,14 +209,47 @@ class _QuickInputScreenState extends ConsumerState<QuickInputScreen>
           content: Text(errorMessage),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
+                // 將文字框中的內容存成草稿
+                final content = _textController.text.trim();
+                if (content.isNotEmpty) {
+                  try {
+                    _syncContentToProvider();
+                    final notifier = ref.read(draftStateProvider.notifier);
+                    final draftId = await notifier.saveQuickDraft(content);
+                    if (draftId != null && mounted) {
+                      _lastSavedDraftId = draftId;
+                      _lastSavedContent = content;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('已儲存為草稿'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('儲存草稿失敗: $e'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  }
+                }
               },
               child: const Text('取消'),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                // 清除錯誤狀態，重置無法修復的邏輯閘
+                final notifier = ref.read(draftStateProvider.notifier);
+                notifier.clearError();
                 // 重新嘗試分析
                 _onAnalyze();
               },

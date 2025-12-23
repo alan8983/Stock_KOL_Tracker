@@ -10,7 +10,7 @@ import '../../../domain/providers/kol_win_rate_provider.dart';
 import '../../../domain/providers/stock_stats_provider.dart';
 import '../../../data/database/database.dart';
 import '../../../data/models/analysis_result.dart';
-import '../../widgets/focused_stock_chart_widget.dart';
+import '../../widgets/stock_chart_widget.dart';
 
 /// 單篇文檔詳細頁面
 /// 包含2個子頁籤：主文內容/K線圖
@@ -569,7 +569,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
       return const Center(child: Text('無資料'));
     }
 
-    return FocusedStockChartWidget(
+    return StockChartWidget(
       ticker: _post!.stockTicker,
       focusDate: _post!.postedAt, // 傳入文檔發布日期
     );

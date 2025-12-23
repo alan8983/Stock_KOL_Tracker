@@ -82,10 +82,11 @@ class PostRepository {
     return await (_db.select(_db.posts)).get();
   }
 
-  /// 取得所有草稿
+  /// 取得所有草稿（依建立時間由新到舊排序）
   Future<List<Post>> getAllDrafts() async {
     return await (_db.select(_db.posts)
-          ..where((tbl) => tbl.status.equals('Draft')))
+          ..where((tbl) => tbl.status.equals('Draft'))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .get();
   }
 

@@ -7,6 +7,7 @@ import '../../../domain/providers/stock_posts_provider.dart';
 import '../../../domain/providers/stock_stats_provider.dart';
 import '../../../domain/providers/kol_posts_provider.dart';
 import '../../../domain/providers/kol_win_rate_provider.dart';
+import '../../../domain/providers/home_tab_provider.dart';
 import '../../../data/models/draft_form_state.dart';
 import '../../widgets/ticker_autocomplete_field.dart';
 import '../../widgets/sentiment_selector.dart';
@@ -14,7 +15,6 @@ import '../../widgets/kol_selector.dart';
 import '../../widgets/relative_time_picker.dart';
 import '../../widgets/datetime_picker_field.dart';
 import '../../widgets/pulsing_border_card.dart';
-import '../stocks/stock_list_screen.dart';
 import '../../../core/utils/time_parser.dart';
 
 /// 分析結果頁面
@@ -120,13 +120,11 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           ref.invalidate(allKOLWinRateStatsProvider);
         }
 
-        // 導航到 StockListScreen
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const StockListScreen(),
-          ),
-          (route) => route.isFirst, // 保留 HomeScreen
-        );
+        // 設置 Tab 索引為 2（投資標的 Tab）
+        ref.read(homeTabIndexProvider.notifier).state = 2;
+        
+        // 導航回 HomeScreen（第一個路由）
+        Navigator.of(context).popUntil((route) => route.isFirst);
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -16,11 +16,13 @@ import 'chart_interval_selector.dart';
 /// 使用 flutter_chen_kchart 套件實現
 class StockChartWidget extends ConsumerStatefulWidget {
   final String ticker;
+  final DateTime? focusDate; // 聚焦日期（可選）
   final ChartThemeConfig theme;
 
   const StockChartWidget({
     super.key,
     required this.ticker,
+    this.focusDate,
     this.theme = ChartThemeConfig.defaultTheme,
   });
 
@@ -127,7 +129,14 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
     // 3. 更新狀態適配器數據
     _stateAdapter.updateData(aggregatedPrices, posts);
     
-    // 4. 獲取 KLineEntity 列表
+    // 4. 如果有聚焦日期，執行聚焦
+    if (widget.focusDate != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _stateAdapter.focusOnDate(widget.focusDate!);
+      });
+    }
+    
+    // 5. 獲取 KLineEntity 列表
     final kchartData = _stateAdapter.candles;
 
     return LayoutBuilder(
@@ -164,6 +173,11 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
             // 圖表說明
             _buildLegend(),
             const SizedBox(height: 8),
+            // 聚焦日期提示（如果有）
+            if (widget.focusDate != null) ...[
+              _buildFocusHint(),
+              const SizedBox(height: 8),
+            ],
             // K線圖區域
             SizedBox(
               height: chartHeight,
@@ -190,26 +204,27 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
                         enablePinchZoom: true,
                         enableScrollZoom: true,
                         onScaleChanged: (scale) {
-                          // 縮放變化時，更新狀態適配器
+                          // 縮放變化時，隱藏 Marker 並更新狀態適配器
+                          _stateAdapter.setInteracting(true);
                           _stateAdapter.setScale(scale);
                         },
                         isOnDrag: (isDragging) {
-                          // 拖拽結束後，使用當前縮放比例重新計算可見範圍
-                          // 這有助於在拖拽後同步標記位置
-                          if (!isDragging) {
+                          if (isDragging) {
+                            // 開始拖拽：隱藏 Marker，假設離開邊界
+                            _stateAdapter.setInteracting(true);
+                            _stateAdapter.leaveBoundary();
+                          } else {
+                            // 結束拖拽：使用當前縮放比例重新計算可見範圍，啟動 Timer 重新顯示 Marker
                             final currentScale = _kchartController.currentScale;
                             _stateAdapter.setScale(currentScale);
+                            _stateAdapter.setInteracting(false);
                           }
                         },
                         onLoadMore: (isRightEdge) {
-                          // 檢測邊界情況，更新可見範圍
+                          // 檢測邊界情況，更新可見範圍和邊界狀態
                           // isRightEdge = true 表示滾動到右側邊界（最新數據）
                           // isRightEdge = false 表示滾動到左側邊界（最舊數據）
-                          if (isRightEdge) {
-                            _stateAdapter.setToLatest();
-                          } else {
-                            _stateAdapter.setToOldest();
-                          }
+                          _stateAdapter.setBoundaryState(isRightEdge);
                         },
                       ),
                       // 2. 情緒標記圖層（使用 IgnorePointer 確保不攔截手勢）
@@ -377,6 +392,31 @@ class _StockChartWidgetState extends ConsumerState<StockChartWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 聚焦日期提示
+  Widget _buildFocusHint() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.center_focus_strong,
+              size: 16, color: Colors.blue.shade700),
+          const SizedBox(width: 6),
+          Text(
+            '圖表已聚焦於文檔發布日',
+            style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+          ),
+        ],
+      ),
     );
   }
 }

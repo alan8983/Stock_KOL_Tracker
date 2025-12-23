@@ -76,6 +76,11 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     state = state.copyWith(postedAt: dateTime);
   }
 
+  /// 清除錯誤訊息
+  void clearError() {
+    state = state.copyWith(errorMessage: null);
+  }
+
   /// 呼叫 Gemini 分析主文
   Future<void> analyzeContent() async {
     if (state.content.isEmpty) {

@@ -17,6 +17,9 @@ class KChartSentimentMarkersPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 如果 Marker 不可見（正在交互中），直接返回
+    if (!stateAdapter.markersVisible) return;
+    
     if (stateAdapter.candles.isEmpty || stateAdapter.posts.isEmpty) return;
 
     for (final post in stateAdapter.posts) {
