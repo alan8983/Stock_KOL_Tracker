@@ -7,6 +7,9 @@ import 'presentation/screens/home/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 註冊 Syncfusion License 已不需要（從 18.3.0.x 版本開始）
+  // SyncfusionLicense.registerLicense() 已移除
+  
   // 載入 .env 檔案
   // 在開發階段，.env 檔案應該在專案根目錄
   // 在生產環境，.env 檔案應該在 assets 目錄中（需要先在 pubspec.yaml 中配置）

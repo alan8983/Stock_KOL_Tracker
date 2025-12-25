@@ -7,7 +7,7 @@ import '../../../domain/providers/stock_stats_provider.dart';
 import '../../../data/database/database.dart';
 import '../posts/post_detail_screen.dart';
 import '../kol/kol_view_screen.dart';
-import '../../widgets/stock_chart_widget.dart';
+import '../../widgets/syncfusion_stock_chart.dart';
 
 /// 投資標的詳細頁面
 /// 包含3個子頁籤：文檔清單/市場敘事/K線圖
@@ -312,7 +312,7 @@ class _StockViewScreenState extends ConsumerState<StockViewScreen>
     // 移除額外的 padding，讓 K 線圖可以充分利用可用空間
     return LayoutBuilder(
       builder: (context, constraints) {
-        return StockChartWidget(ticker: widget.ticker);
+        return SyncfusionStockChart(ticker: widget.ticker);
       },
     );
   }

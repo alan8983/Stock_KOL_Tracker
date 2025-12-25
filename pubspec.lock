@@ -278,14 +278,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_chen_kchart:
-    dependency: "direct main"
-    description:
-      name: flutter_chen_kchart
-      sha256: f83bce20dde53d49737fd91a5e69c80aa4cb537e68affc2c50cb1b7f317dc2c9
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.4.1"
   flutter_dotenv:
     dependency: "direct main"
     description:
@@ -741,6 +733,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  syncfusion_flutter_charts:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_charts
+      sha256: e41258f63bcfcfd3e219be25fa211efe9fc75e10f27fe0477fa8d69d286048c4
+      url: "https://pub.dev"
+    source: hosted
+    version: "32.1.20"
+  syncfusion_flutter_core:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_core
+      sha256: "9553fd29354cdacdd063ba7d6a39e0be9b3350b9345b1bcc2e4ab29a7439b11b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "32.1.20"
   term_glyph:
     dependency: transitive
     description:
@@ -847,4 +855,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.9.0 <4.0.0"
-  flutter: ">=3.35.0"
+  flutter: ">=3.35.1"

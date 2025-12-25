@@ -72,6 +72,47 @@ flutter run
 
 ## 📊 Git 推送進展記錄
 
+### 🎯 最新進展 (2025-12-26)
+
+#### Refactor: 遷移 K線圖到 Syncfusion 並更新文檔
+**日期**: 2025-12-26  
+**主要變更**:
+- ✅ **K線圖套件遷移** - 從 `flutter_chen_kchart` 遷移到 `syncfusion_flutter_charts`
+  - 移除舊的 K線圖實現組件（kchart_state_adapter, kchart_sentiment_markers_painter, stock_chart_widget 等）
+  - 新增 `SyncfusionStockChart` 組件，使用 `SfCartesianChart` 和 `CandleSeries`
+  - 實現精確的情緒標記定位（使用 `CartesianChartAnnotation`）
+  - 支援 K線間隔選擇（日線/週線/月線）和時間範圍選擇（3個月/6個月/1年）
+  - 實現長按標記顯示文檔清單的氣泡功能（`MarkerBubbleOverlay`）
+  - 支援雙指縮放和平移（`ZoomPanBehavior`）
+  - 實現 Trackball 功能（長按顯示詳細資訊）
+- ✅ **數據處理優化**
+  - 新增 `CandleAggregator` 工具類，支援不同時間間隔的 K線聚合
+  - 新增 `MarkerPositionCalculator` 工具類，精確計算標記位置
+  - 保留發布日順延邏輯（無交易時順延到下一個交易日）
+- ✅ **UI 改進**
+  - 新增 `ChartIntervalSelector` 組件，支援間隔和時間範圍選擇
+  - 改進圖例顯示和統計卡片
+  - 優化長按氣泡的顯示效果
+- ✅ **文檔更新**
+  - 新增 `K線圖開發歷程總結.md`，記錄完整的開發歷程
+  - 更新 `APP_PAGE_ARCHITECTURE_SUMMARY.md` 和 `PROJECT_MASTER_PLAN.md`
+
+**技術改進**:
+- 移除 `flutter_chen_kchart: ^2.4.1` 依賴
+- 新增 `syncfusion_flutter_charts: ^32.1.20` 依賴
+- 簡化狀態管理，利用 Syncfusion 內建的狀態管理
+- 改善標記定位精度，使用套件提供的 Annotation API
+
+**統計**:
+- 13 個檔案變更
+- 637 行新增
+- 1,623 行刪除
+
+**相關文件**:
+- [K線圖開發歷程總結.md](./docs/K線圖開發歷程總結.md) - 完整的開發歷程與遷移參考
+
+---
+
 ### 🎯 最新進展 (2025-12-19)
 
 #### Commit: `c5b8ef9` - 完整功能實現：K線圖、漲跌幅計算與勝率統計
@@ -460,7 +501,7 @@ flutter run
 - ✅ **診斷工具**: API 連接測試與診斷功能
 - ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
 - ✅ **視覺提示**: 必填欄位脈衝邊框提醒效果
-- ✅ **K線圖**: 自定義實現的專業 K 線圖（CustomPainter，精確 Marker 定位，完全同步縮放/平移）
+- ✅ **K線圖**: 使用 Syncfusion 實現的專業 K 線圖（精確 Marker 定位，支援縮放/平移，長按顯示文檔清單）
 - ✅ **漲跌幅計算**: 多時間區間漲跌幅顯示（5/30/90/365 天）
 - ✅ **勝率統計**: KOL 與股票勝率計算與顯示（門檻版 ±2%）
 
@@ -471,7 +512,7 @@ flutter run
 
 ### 計劃功能
 
-- ⏳ **K 線圖**: 整合股價走勢圖與文檔標記
+- ✅ **K 線圖**: 整合股價走勢圖與文檔標記（已完成，使用 Syncfusion）
 - ⏳ **回測功能**: 計算 KOL 預測準確率
 - ⏳ **勝率統計**: 5/30/90 日後漲跌幅分析
 
