@@ -4,7 +4,13 @@
 
 ## 📋 專案概述
 
-Stock KOL Tracker 是一個本地部署的移動應用程式，專為忙碌的散戶投資者設計。透過 AI 分析 KOL 發言內容，自動識別投資標的、情緒分析，並提供回測功能來評估 KOL 的預測準確度。
+Stock KOL Tracker 是一個財經 KOL 投資建議回測系統，幫助投資者追蹤和分析 KOL 的投資觀點，驗證其準確性與時效性。
+
+**專案包含兩個版本**：
+- **Flutter 移動應用**：本地部署的移動應用程式，專為忙碌的散戶投資者設計
+- **Web 應用**：使用 Next.js 14 + Supabase 的 Web 版本（位於 `stock-kol-tracker-web/` 目錄）
+
+透過 AI 分析 KOL 發言內容，自動識別投資標的、情緒分析，並提供回測功能來評估 KOL 的預測準確度。支援多標的分析，每個標的可獨立判斷情緒。
 
 ## 🚀 快速開始
 
@@ -71,6 +77,72 @@ flutter run
 ```
 
 ## 📊 Git 推送進展記錄
+
+### 🎯 最新進展 (2026-01-30)
+
+#### Feature: 實現多標的支援系統與相關功能優化
+**日期**: 2026-01-30  
+**主要變更**:
+- ✅ **多標的支援系統** - 完整實現多標的分析功能
+  - 新增 `PostStockRepository` 管理 Post-Stock 多對多關聯
+  - 更新資料模型支援多標的分析（`TickerAnalysis`）
+  - 優化 AI 分析服務，支援多標的獨立情緒判斷
+  - 更新草稿狀態管理，支援多標的編輯
+  - 改進貼文列表顯示，支援多標的關聯
+  - 優化 UI 組件以支援多標的顯示
+  - 向後兼容舊的單一標的格式
+- ✅ **AI 分析服務優化**
+  - 改進 Gemini 服務，支援多標的獨立分析
+  - 每個標的獨立判斷情緒（看多/中性/看空）
+  - 優化分析結果結構，支援多標的數據
+- ✅ **資料庫架構改進**
+  - 新增 `PostStockRepository` 處理多對多關聯
+  - 更新 `PostRepository` 支援多標的查詢
+  - 改進資料模型，支援多標的關聯查詢
+- ✅ **UI 組件改進**
+  - 更新 `PostCard` 支援多標的顯示
+  - 改進 `PostDetailScreen` 顯示多標的資訊
+  - 優化 `AnalysisResultScreen` 支援多標的編輯
+  - 更新 `SyncfusionStockChart` 支援多標的圖表顯示
+  - 改進 `MarkerBubbleOverlay` 顯示多標的相關文檔
+
+**技術改進**:
+- 擴展 `AnalysisResult` 模型，支援多標的分析結果
+- 更新 `DraftFormState` 支援多標的編輯狀態
+- 改進 `PostWithKol` 模型，支援多標的關聯
+- 優化 Repository 層，支援多標的查詢和關聯
+
+**統計**:
+- 17 個檔案變更
+- 1,150 行新增
+- 296 行刪除
+
+**相關文件**:
+- 多標的支援系統完整實現，向後兼容單一標的格式
+
+---
+
+#### 新增：Web 版本專案
+**日期**: 2026-01-30  
+**主要變更**:
+- ✅ **Web 版本架構** - 新增 `stock-kol-tracker-web/` 目錄
+  - 使用 Next.js 14 + Supabase + Firebase App Hosting
+  - 完整的 Web 應用程式架構
+  - 支援認證、資料管理、AI 分析等功能
+  - 詳細的規格文件與部署指南
+
+**專案結構**:
+- Next.js App Router 架構
+- Supabase 資料庫整合
+- Firebase App Hosting 部署支援
+- 完整的 TypeScript 類型定義
+- 詳細的開發與部署文檔
+
+**相關文件**:
+- [stock-kol-tracker-web/README.md](./stock-kol-tracker-web/README.md) - Web 版本說明文件
+- [stock-kol-tracker-web/docs/](./stock-kol-tracker-web/docs/) - Web 版本規格文件
+
+---
 
 ### 🎯 最新進展 (2025-12-26)
 
@@ -502,6 +574,7 @@ flutter run
 - ✅ **安全機制**: Git Pre-commit Hook 防止 API Keys 洩露
 - ✅ **視覺提示**: 必填欄位脈衝邊框提醒效果
 - ✅ **K線圖**: 使用 Syncfusion 實現的專業 K 線圖（精確 Marker 定位，支援縮放/平移，長按顯示文檔清單）
+- ✅ **多標的支援**: 完整的多標的分析系統，支援一篇文檔關聯多個投資標的
 - ✅ **漲跌幅計算**: 多時間區間漲跌幅顯示（5/30/90/365 天）
 - ✅ **勝率統計**: KOL 與股票勝率計算與顯示（門檻版 ±2%）
 

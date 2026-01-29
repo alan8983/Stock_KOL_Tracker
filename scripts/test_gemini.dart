@@ -46,7 +46,7 @@ void main() async {
         }
       }
       
-      print('\n建議使用: gemini-1.5-flash 或 gemini-1.5-pro');
+      print('\n開發階段請使用: gemini-2.5-flash');
     }
   } catch (e) {
     print('❌ 錯誤: $e');

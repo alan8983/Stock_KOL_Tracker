@@ -1,0 +1,48 @@
+# Firebase App Hosting 配置文件
+# 文檔: https://firebase.google.com/docs/app-hosting/configure
+
+# 運行配置
+runConfig:
+  # Node.js 運行時版本
+  runtime: nodejs20
+  
+  # 每個實例的並發請求數
+  concurrency: 80
+  
+  # CPU 數量
+  cpu: 1
+  
+  # 記憶體大小（MB）
+  memoryMiB: 512
+  
+  # 最小實例數（0 = 可縮減至零，節省成本）
+  minInstances: 0
+  
+  # 最大實例數
+  maxInstances: 10
+
+# 環境變數配置
+# 使用 Google Cloud Secret Manager 管理敏感資料
+env:
+  # Supabase 配置
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    secret: SUPABASE_URL
+    
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    secret: SUPABASE_ANON_KEY
+    
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
+
+  # Gemini API 配置
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+
+  # Tiingo API 配置（股價資料）
+  - variable: TIINGO_API_TOKEN
+    secret: TIINGO_API_TOKEN
+
+  # 應用程式 URL（部署後需更新）
+  # 注意：此變數在部署後由 Firebase 自動設定，或可手動覆蓋
+  # - variable: NEXT_PUBLIC_APP_URL
+  #   value: https://your-app.web.app
