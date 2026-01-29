@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 /// Marker 長按氣泡組件
 /// 顯示該 Candlestick 日期區間內的所有文檔清單
-class MarkerBubbleOverlay extends ConsumerWidget {
+class MarkerBubbleOverlay extends ConsumerStatefulWidget {
   final List<Post> posts;
   final Offset position;
   final VoidCallback onDismiss;
@@ -20,13 +20,74 @@ class MarkerBubbleOverlay extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MarkerBubbleOverlay> createState() => _MarkerBubbleOverlayState();
+}
+
+class _MarkerBubbleOverlayState extends ConsumerState<MarkerBubbleOverlay> {
+  final GlobalKey _bubbleKey = GlobalKey();
+  Offset? _adaptivePosition;
+
+  @override
+  void initState() {
+    super.initState();
+    // 使用 WidgetsBinding 在下一幀計算位置（此時已渲染完成）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateAdaptivePosition();
+    });
+  }
+
+  void _calculateAdaptivePosition() {
+    if (!mounted) return;
+    
+    final renderBox = _bubbleKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final bubbleSize = renderBox.size;
+    final screenSize = MediaQuery.of(context).size;
+    const padding = 8.0;
+
+    double left = widget.position.dx;
+    double top = widget.position.dy;
+
+    // 確保不超出右邊界
+    if (left + bubbleSize.width > screenSize.width - padding) {
+      left = screenSize.width - bubbleSize.width - padding;
+    }
+
+    // 確保不超出左邊界
+    if (left < padding) {
+      left = padding;
+    }
+
+    // 確保不超出下邊界
+    if (top + bubbleSize.height > screenSize.height - padding) {
+      top = screenSize.height - bubbleSize.height - padding;
+    }
+
+    // 確保不超出上邊界
+    if (top < padding) {
+      top = padding;
+    }
+
+    setState(() {
+      _adaptivePosition = Offset(left, top);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const bubbleWidth = 180.0;
+    const maxBubbleHeight = 250.0;
+
+    // 初始位置使用傳入的位置，渲染後會更新為自適應位置
+    final currentPosition = _adaptivePosition ?? widget.position;
+
     return Stack(
       children: [
         // 背景遮罩（點擊關閉）
         Positioned.fill(
           child: GestureDetector(
-            onTap: onDismiss,
+            onTap: widget.onDismiss,
             child: Container(
               color: Colors.transparent,
             ),
@@ -34,76 +95,31 @@ class MarkerBubbleOverlay extends ConsumerWidget {
         ),
         // 氣泡內容
         Positioned(
-          left: position.dx.clamp(0, MediaQuery.of(context).size.width - 200),
-          top: position.dy.clamp(0, MediaQuery.of(context).size.height - 300),
+          left: currentPosition.dx,
+          top: currentPosition.dy,
           child: Material(
             elevation: 8,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             child: Container(
-              width: 250,
-              constraints: const BoxConstraints(maxHeight: 300),
+              key: _bubbleKey,
+              width: bubbleWidth,
+              constraints: const BoxConstraints(maxHeight: maxBubbleHeight),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Theme.of(context).dividerColor,
                   width: 1,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 標題
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.description,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '文檔清單 (${posts.length})',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: onDismiss,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // 文檔列表
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) {
-                        final post = posts[index];
-                        return _buildPostItem(context, ref, post);
-                      },
-                    ),
-                  ),
-                ],
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: widget.posts.length,
+                itemBuilder: (context, index) {
+                  final post = widget.posts[index];
+                  return _buildPostItem(context, post);
+                },
               ),
             ),
           ),
@@ -112,33 +128,26 @@ class MarkerBubbleOverlay extends ConsumerWidget {
     );
   }
 
-  Widget _buildPostItem(BuildContext context, WidgetRef ref, Post post) {
+  Widget _buildPostItem(BuildContext context, Post post) {
     // 查詢 KOL 信息
     final kolAsync = ref.watch(kolProvider(post.kolId));
 
     return kolAsync.when(
-      data: (kol) => _buildPostItemContent(context, post, kol),
+      data: (kol) => _buildPostItemContent(context, widget.onDismiss, post, kol),
       loading: () => const ListTile(
         title: Text('載入中...'),
         dense: true,
       ),
-      error: (_, __) => _buildPostItemContent(context, post, null),
+      error: (_, __) => _buildPostItemContent(context, widget.onDismiss, post, null),
     );
   }
 
-  Widget _buildPostItemContent(BuildContext context, Post post, KOL? kol) {
+  Widget _buildPostItemContent(BuildContext context, VoidCallback onDismiss, Post post, KOL? kol) {
     final kolName = kol?.name ?? '未知作者';
-    final dateStr = DateFormat('yyyy/MM/dd HH:mm').format(post.postedAt);
+    final dateStr = DateFormat('MM/dd').format(post.postedAt);
 
     return ListTile(
       dense: true,
-      leading: CircleAvatar(
-        radius: 16,
-        child: Text(
-          kolName.substring(0, kolName.length >= 2 ? 2 : 1),
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        ),
-      ),
       title: Text(
         kolName,
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
@@ -152,7 +161,7 @@ class MarkerBubbleOverlay extends ConsumerWidget {
           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         ),
       ),
-      trailing: _buildSentimentChip(context, post.sentiment),
+      trailing: _buildSentimentChip(post.sentiment),
       onTap: () {
         onDismiss();
         Navigator.push(
@@ -165,7 +174,7 @@ class MarkerBubbleOverlay extends ConsumerWidget {
     );
   }
 
-  Widget _buildSentimentChip(BuildContext context, String sentiment) {
+  Widget _buildSentimentChip(String sentiment) {
     Color color;
     String label;
 

@@ -141,9 +141,20 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
         return SingleChildScrollView(
           child: Column(
             children: [
-              // K線間隔和時間範圍選擇器
+              // 聚焦日期提示（如果有）- 移到圖表上方
+              if (widget.focusDate != null) ...[
+                _buildFocusHint(),
+                const SizedBox(height: 8),
+              ],
+              // K線圖區域（保持固定高度和寬度，確保座標系統不變）
+              SizedBox(
+                height: chartHeight,
+                width: constraints.maxWidth,
+                child: _buildSyncfusionChart(aggregatedPrices, markerPositions),
+              ),
+              // K線間隔和時間範圍選擇器（移到圖表下方）
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                 child: ChartIntervalSelector(
                   selectedInterval: _selectedInterval,
                   selectedRange: _selectedRange,
@@ -159,21 +170,9 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
                   },
                 ),
               ),
-              const SizedBox(height: 8),
-              // 圖表說明
+              // 圖表說明（移到選擇器下方）
               _buildLegend(),
               const SizedBox(height: 8),
-              // 聚焦日期提示（如果有）
-              if (widget.focusDate != null) ...[
-                _buildFocusHint(),
-                const SizedBox(height: 8),
-              ],
-              // K線圖區域
-              SizedBox(
-                height: chartHeight,
-                width: constraints.maxWidth,
-                child: _buildSyncfusionChart(aggregatedPrices, markerPositions),
-              ),
               // 刷新按鈕
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -245,6 +244,8 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
           bullColor: widget.theme.increasingColor,
           bearColor: widget.theme.decreasingColor,
           name: 'K線',
+          // 動畫設置：加快動畫速度（從默認 1500ms 縮短到 600ms）
+          animationDuration: 600,
         ),
         // 交易量（使用次要 Y 軸）
         ColumnSeries<StockPrice, DateTime>(
@@ -254,6 +255,8 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
           yAxisName: 'volumeAxis',
           color: widget.theme.volumeIncreasingColor.withOpacity(0.3),
           name: '交易量',
+          // 動畫設置：加快動畫速度（從默認 1500ms 縮短到 600ms）
+          animationDuration: 600,
         ),
       ],
       // 次要 Y 軸（交易量）
@@ -292,6 +295,30 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
   ) {
     final List<CartesianChartAnnotation> annotations = [];
 
+    if (prices.isEmpty || markerPositions.isEmpty) {
+      return annotations;
+    }
+
+    // 計算價格範圍（用於計算偏移量）
+    double minPrice = prices.first.low;
+    double maxPrice = prices.first.high;
+    for (final price in prices) {
+      if (price.low < minPrice) minPrice = price.low;
+      if (price.high > maxPrice) maxPrice = price.high;
+    }
+
+    // 計算1/8圖表高度對應的價格偏移量
+    // 圖表高度400.0，1/8 = 50像素
+    const chartHeight = 400.0;
+    const offsetInPixels = chartHeight / 8.0; // 約50像素
+    const plotAreaRatio = 0.75; // K線圖區域約佔75%（預留空間給交易量等）
+    final plotAreaHeight = chartHeight * plotAreaRatio;
+    
+    // 將像素偏移轉換為價格偏移
+    // 假設價格範圍均勻分布在plotAreaHeight中
+    final priceRange = maxPrice - minPrice;
+    final priceOffset = (priceRange / plotAreaHeight) * offsetInPixels;
+
     for (final entry in markerPositions.entries) {
       final candleDate = entry.key;
       final posts = entry.value;
@@ -319,13 +346,32 @@ class _SyncfusionStockChartState extends ConsumerState<SyncfusionStockChart> {
         ),
       );
 
+      // 計算Marker的Y座標，距離K線約1/8圖表高度
+      double markerY;
+      if (sentiment == 'Bearish') {
+        // 看空：在上方（high + 偏移）
+        markerY = candle.high + priceOffset;
+        // 確保不超出圖表最大價格範圍（加上一些padding）
+        final maxAllowedPrice = maxPrice + priceRange * 0.1; // 允許10%的padding
+        if (markerY > maxAllowedPrice) {
+          markerY = maxAllowedPrice;
+        }
+      } else {
+        // 看多/中性：在下方（low - 偏移）
+        markerY = candle.low - priceOffset;
+        // 確保不低於圖表最小價格範圍（減去一些padding）
+        final minAllowedPrice = minPrice - priceRange * 0.1; // 允許10%的padding
+        if (markerY < minAllowedPrice) {
+          markerY = minAllowedPrice;
+        }
+      }
+
       annotations.add(
         CartesianChartAnnotation(
           widget: markerWidget,
           coordinateUnit: CoordinateUnit.point,
           x: candleDate,
-          // Bearish 在上方（high），其他在下方（low）
-          y: sentiment == 'Bearish' ? candle.high : candle.low,
+          y: markerY,
         ),
       );
     }

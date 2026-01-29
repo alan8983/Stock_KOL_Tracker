@@ -31,6 +31,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
   late TabController _tabController;
   Post? _post;
   KOL? _kol;
+  List<PostStock> _postStocks = [];
   bool _isLoading = true;
   bool _isBookmarked = false;
   bool _isEditingContent = false;
@@ -58,15 +59,23 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
       
       final post = await postRepo.getPostById(widget.postId);
       KOL? kol;
+      List<PostStock> postStocks = [];
       
       if (post != null) {
         kol = await kolRepo.getKOLById(post.kolId);
+        postStocks = await postRepo.getPostStocks(widget.postId);
+        
+        // 向後兼容：如果沒有 PostStocks，使用舊的 stockTicker 欄位
+        if (postStocks.isEmpty && post.stockTicker != null && post.stockTicker!.isNotEmpty) {
+          // 這裡不需要創建 PostStock，因為只是顯示用
+        }
       }
       
       if (mounted) {
         setState(() {
           _post = post;
           _kol = kol;
+          _postStocks = postStocks;
           _isLoading = false;
         });
       }
@@ -237,21 +246,96 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.show_chart, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                _post!.stockTicker,
-                style: const TextStyle(
-                  fontSize: 14,
+          // 顯示所有標的
+          if (_postStocks.isNotEmpty)
+            _buildTickersSection()
+          else if (_post!.stockTicker != null && _post!.stockTicker!.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.show_chart, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  _post!.stockTicker!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 顯示所有標的的區塊
+  Widget _buildTickersSection() {
+    final primaryStock = _postStocks.firstWhere(
+      (ps) => ps.isPrimary,
+      orElse: () => _postStocks.isNotEmpty ? _postStocks.first : throw StateError('No stocks'),
+    );
+    final otherStocks = _postStocks.where((ps) => !ps.isPrimary).toList();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 主要標的
+        Row(
+          children: [
+            const Icon(Icons.show_chart, size: 16),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.blue.shade300),
+              ),
+              child: const Text(
+                '主要',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              primaryStock.stockTicker,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _buildSentimentChip(primaryStock.sentiment),
+          ],
+        ),
+        // 其他標的
+        if (otherStocks.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...otherStocks.map((stock) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                const SizedBox(width: 20), // 對齊
+                const Icon(Icons.show_chart, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  stock.stockTicker,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildSentimentChip(stock.sentiment),
+              ],
+            ),
+          )).toList(),
         ],
-      ),
+      ],
     );
   }
 
@@ -569,8 +653,20 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen>
       return const Center(child: Text('無資料'));
     }
 
+    // 使用主要標的顯示 K 線圖
+    final primaryTicker = _postStocks.isNotEmpty
+        ? _postStocks.firstWhere(
+            (ps) => ps.isPrimary,
+            orElse: () => _postStocks.first,
+          ).stockTicker
+        : _post!.stockTicker ?? '';
+
+    if (primaryTicker.isEmpty) {
+      return const Center(child: Text('無標的資料'));
+    }
+
     return SyncfusionStockChart(
-      ticker: _post!.stockTicker,
+      ticker: primaryTicker,
       focusDate: _post!.postedAt, // 傳入文檔發布日期
     );
   }

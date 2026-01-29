@@ -23,12 +23,14 @@ class PostListStateNotifier extends StateNotifier<AsyncValue<List<PostWithKOL>>>
       // 取得已發布貼文
       final posts = await _postRepository.getPublishedPosts(ascending: _ascending);
       
-      // 關聯查詢 KOL 資訊
+      // 關聯查詢 KOL 資訊和標的關聯
       final postsWithKOL = <PostWithKOL>[];
       for (final post in posts) {
         final kol = await _kolRepository.getKOLById(post.kolId);
         if (kol != null) {
-          postsWithKOL.add(PostWithKOL(post: post, kol: kol));
+          // 載入標的關聯
+          final postStocks = await _postRepository.getPostStocks(post.id);
+          postsWithKOL.add(PostWithKOL(post: post, kol: kol, postStocks: postStocks));
         }
       }
       

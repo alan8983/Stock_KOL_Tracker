@@ -32,7 +32,7 @@ class ChartIntervalSelector extends StatelessWidget {
       children: [
         // 第一排：K線間隔選擇
         _buildIntervalRow(context),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         // 第二排：時間範圍選擇
         _buildRangeRow(context),
       ],
@@ -46,13 +46,13 @@ class ChartIntervalSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildIntervalButton(context, CandleInterval.daily, '日K'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildIntervalButton(context, CandleInterval.weekly, '周K'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildIntervalButton(context, CandleInterval.monthly, '月K'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildIntervalButton(context, CandleInterval.quarterly, '季K'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildIntervalButton(context, CandleInterval.yearly, '年K'),
         ],
       ),
@@ -66,13 +66,13 @@ class ChartIntervalSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildRangeButton(context, TimeRange.oneMonth, '1月'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildRangeButton(context, TimeRange.threeMonths, '3月'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildRangeButton(context, TimeRange.ytd, 'YTD'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildRangeButton(context, TimeRange.oneYear, '1年'),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _buildRangeButton(context, TimeRange.fiveYears, '5年'),
         ],
       ),
@@ -117,14 +117,14 @@ class ChartIntervalSelector extends StatelessWidget {
       color: isSelected
           ? Theme.of(context).colorScheme.primary
           : Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(4),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: isSelected
                   ? Theme.of(context).colorScheme.primary
@@ -135,7 +135,7 @@ class ChartIntervalSelector extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               color: isSelected
                   ? Theme.of(context).colorScheme.onPrimary

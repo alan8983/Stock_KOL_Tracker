@@ -5,6 +5,7 @@ import '../../data/models/draft_form_state.dart';
 import '../../data/models/relative_time_input.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/repositories/post_stock_repository.dart';
 import '../../data/repositories/stock_repository.dart';
 import '../../data/repositories/kol_repository.dart';
 import '../../data/services/Gemini/gemini_service.dart';
@@ -34,10 +35,28 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     _draftId = id;
     final draft = await _postRepository.getDraftById(id);
     if (draft != null) {
+      // 載入標的關聯
+      final postStocks = await _postRepository.getPostStocks(id);
+      final tickerAnalyses = postStocks.map((ps) => TickerAnalysisData(
+        ticker: ps.stockTicker,
+        sentiment: ps.sentiment,
+        isPrimary: ps.isPrimary,
+      )).toList();
+      
+      // 如果沒有標的關聯，使用舊的欄位（向後兼容）
+      if (tickerAnalyses.isEmpty && draft.stockTicker != null && draft.stockTicker!.isNotEmpty) {
+        tickerAnalyses.add(TickerAnalysisData(
+          ticker: draft.stockTicker!,
+          sentiment: draft.sentiment ?? 'Neutral',
+          isPrimary: true,
+        ));
+      }
+      
       state = DraftFormState(
         content: draft.content,
         ticker: draft.stockTicker,
-        sentiment: draft.sentiment,
+        sentiment: draft.sentiment ?? 'Neutral',
+        tickerAnalyses: tickerAnalyses,
         kolId: draft.kolId,
         postedAt: draft.postedAt,
       );
@@ -51,14 +70,38 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     state = state.copyWith(content: content);
   }
 
-  /// 更新標的
+  /// 更新標的（向後兼容）
+  @Deprecated('使用 updateTickerAnalyses 代替')
   void updateTicker(String? ticker) {
     state = state.copyWith(ticker: ticker);
   }
 
-  /// 更新情緒
+  /// 更新情緒（向後兼容）
+  @Deprecated('使用 updateTickerAnalyses 代替')
   void updateSentiment(String sentiment) {
     state = state.copyWith(sentiment: sentiment);
+  }
+  
+  /// 更新多標的分析
+  void updateTickerAnalyses(List<TickerAnalysisData> tickerAnalyses) {
+    state = state.copyWith(tickerAnalyses: tickerAnalyses);
+  }
+  
+  /// 更新單一標的情緒
+  void updateTickerSentiment(int index, String sentiment) {
+    final updated = List<TickerAnalysisData>.from(state.tickerAnalyses);
+    if (index >= 0 && index < updated.length) {
+      updated[index] = updated[index].copyWith(sentiment: sentiment);
+      state = state.copyWith(tickerAnalyses: updated);
+    }
+  }
+  
+  /// 切換主要標的
+  void setPrimaryTicker(int index) {
+    final updated = state.tickerAnalyses.map((t, i) {
+      return t.copyWith(isPrimary: i == index);
+    }).toList();
+    state = state.copyWith(tickerAnalyses: updated);
   }
 
   /// 更新 KOL
@@ -94,27 +137,58 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
     try {
       final result = await _geminiService.analyzeText(state.content);
       
-      print('📊 DraftStateNotifier: 收到分析結果 - 情緒: ${result.sentiment}, 股票: ${result.tickers}, KOL: ${result.kolName}, 時間: ${result.postedAtText}');
+      print('📊 DraftStateNotifier: 收到分析結果 - tickerAnalyses: ${result.tickerAnalyses.length}, KOL: ${result.kolName}, 時間: ${result.postedAtText}');
       
-      // 自動填入 AI 分析結果
-      String? ticker;
-      if (result.tickers.isNotEmpty) {
-        ticker = result.tickers.first;
-        print('📈 DraftStateNotifier: 檢查股票 $ticker 是否存在於資料庫...');
-        
-        // 確保股票存在於資料庫中
-        final stock = await _stockRepository.getStockByTicker(ticker);
-        if (stock == null) {
-          print('➕ DraftStateNotifier: 自動建立股票記錄: $ticker');
-          // 自動建立股票記錄
-          await _stockRepository.upsertStock(
-            StocksCompanion.insert(
-              ticker: ticker,
-              lastUpdated: DateTime.now(),
-            ),
-          );
-        } else {
-          print('✓ DraftStateNotifier: 股票 $ticker 已存在');
+      // 處理多標的分析結果
+      List<TickerAnalysisData> tickerAnalyses = [];
+      if (result.tickerAnalyses.isNotEmpty) {
+        // 使用新的 tickerAnalyses 格式
+        for (final tickerAnalysis in result.tickerAnalyses) {
+          print('📈 DraftStateNotifier: 檢查股票 ${tickerAnalysis.ticker} 是否存在於資料庫...');
+          
+          // 確保股票存在於資料庫中
+          final stock = await _stockRepository.getStockByTicker(tickerAnalysis.ticker);
+          if (stock == null) {
+            print('➕ DraftStateNotifier: 自動建立股票記錄: ${tickerAnalysis.ticker}');
+            await _stockRepository.upsertStock(
+              StocksCompanion.insert(
+                ticker: tickerAnalysis.ticker,
+                lastUpdated: DateTime.now(),
+              ),
+            );
+          } else {
+            print('✓ DraftStateNotifier: 股票 ${tickerAnalysis.ticker} 已存在');
+          }
+          
+          tickerAnalyses.add(TickerAnalysisData(
+            ticker: tickerAnalysis.ticker,
+            sentiment: tickerAnalysis.sentiment,
+            isPrimary: tickerAnalysis.isPrimary,
+          ));
+        }
+      } else if (result.tickers != null && result.tickers!.isNotEmpty) {
+        // 向後兼容：使用舊的 tickers 格式
+        final sentiment = result.sentiment ?? 'Neutral';
+        for (int i = 0; i < result.tickers!.length; i++) {
+          final ticker = result.tickers![i];
+          print('📈 DraftStateNotifier: 檢查股票 $ticker 是否存在於資料庫...');
+          
+          final stock = await _stockRepository.getStockByTicker(ticker);
+          if (stock == null) {
+            print('➕ DraftStateNotifier: 自動建立股票記錄: $ticker');
+            await _stockRepository.upsertStock(
+              StocksCompanion.insert(
+                ticker: ticker,
+                lastUpdated: DateTime.now(),
+              ),
+            );
+          }
+          
+          tickerAnalyses.add(TickerAnalysisData(
+            ticker: ticker,
+            sentiment: sentiment,
+            isPrimary: i == 0, // 第一個設為主要標的
+          ));
         }
       }
 
@@ -145,11 +219,17 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
         }
       }
 
+      // 向後兼容：設定舊的 ticker 和 sentiment（使用主要標的）
+      final primaryTicker = tickerAnalyses.isNotEmpty 
+          ? tickerAnalyses.firstWhere((t) => t.isPrimary, orElse: () => tickerAnalyses.first)
+          : null;
+      
       state = state.copyWith(
         isAnalyzing: false,
         aiResult: result,
-        ticker: ticker ?? state.ticker,
-        sentiment: result.sentiment,
+        ticker: primaryTicker?.ticker ?? state.ticker,
+        sentiment: primaryTicker?.sentiment ?? result.sentiment ?? state.sentiment,
+        tickerAnalyses: tickerAnalyses,
         kolId: kolId ?? state.kolId,
         postedAt: postedAt ?? state.postedAt,
       );
@@ -204,11 +284,25 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
         }
       }
 
+      // 轉換 tickerAnalyses 為 PostStockData
+      final postStocks = state.tickerAnalyses.map((t) => PostStockData(
+        stockTicker: t.ticker,
+        sentiment: t.sentiment,
+        isPrimary: t.isPrimary,
+      )).toList();
+
+      // 向後兼容：設定舊的 stockTicker 和 sentiment（使用主要標的）
+      final primaryTicker = state.primaryTicker;
+      
       final companion = PostsCompanion.insert(
         kolId: state.kolId!,
-        stockTicker: state.ticker!,
+        stockTicker: primaryTicker?.ticker != null 
+            ? drift.Value(primaryTicker!.ticker)
+            : const drift.Value.absent(),
         content: state.content,
-        sentiment: state.sentiment,
+        sentiment: primaryTicker?.sentiment != null
+            ? drift.Value(primaryTicker!.sentiment)
+            : const drift.Value.absent(),
         postedAt: state.postedAt!,
         createdAt: DateTime.now(),
         status: 'Draft',
@@ -218,9 +312,9 @@ class DraftStateNotifier extends StateNotifier<DraftFormState> {
       );
 
       if (_draftId != null) {
-        await _postRepository.updatePost(_draftId!, companion);
+        await _postRepository.updatePost(_draftId!, companion, postStocks: postStocks);
       } else {
-        _draftId = await _postRepository.createDraft(companion);
+        _draftId = await _postRepository.createDraft(companion, postStocks: postStocks);
       }
 
       state = state.copyWith(isSaving: false);

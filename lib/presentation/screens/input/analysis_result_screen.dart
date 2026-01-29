@@ -90,20 +90,22 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       await notifier.publishPost();
 
       if (mounted) {
-        // 取得建檔的 ticker 和 kolId，用於刷新相關 Provider
+        // 取得建檔的 tickers 和 kolId，用於刷新相關 Provider
         final draftState = ref.read(draftStateProvider);
-        final ticker = draftState.ticker;
+        final tickers = draftState.tickerAnalyses.map((t) => t.ticker).toList();
         final kolId = draftState.kolId;
 
         // 刷新所有相關的 Provider
-        if (ticker != null && kolId != null) {
+        if (tickers.isNotEmpty && kolId != null) {
           // 刷新文檔列表
           ref.read(postListProvider.notifier).loadPosts();
           
-          // 刷新股票相關 Provider
-          ref.invalidate(stockPostsProvider(ticker));
-          ref.invalidate(stockPostsWithDetailsProvider(ticker));
-          ref.invalidate(stockStatsProvider(ticker));
+          // 刷新所有相關股票的 Provider
+          for (final ticker in tickers) {
+            ref.invalidate(stockPostsProvider(ticker));
+            ref.invalidate(stockPostsWithDetailsProvider(ticker));
+            ref.invalidate(stockStatsProvider(ticker));
+          }
           
           // 刷新股票列表（用於顯示新建立的股票）
           ref.read(stockListProvider.notifier).loadStocks();
@@ -345,9 +347,22 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         points.add(result.reasoning!);
       } else {
         // 降級方案：顯示基本資訊
-        points.add('文章主要討論${result.tickers.isNotEmpty ? result.tickers.join('、') : '市場動態'}');
-        final sentimentText = _getSentimentText(result.sentiment);
-        points.add('整體觀點偏向$sentimentText');
+        if (result.tickerAnalyses.isNotEmpty) {
+          final tickers = result.tickerAnalyses.map((t) => t.ticker).join('、');
+          points.add('文章主要討論$tickers');
+          final primaryTicker = result.primaryTicker;
+          if (primaryTicker != null) {
+            final sentimentText = _getSentimentText(primaryTicker.sentiment);
+            points.add('主要標的 $primaryTicker.ticker 觀點偏向$sentimentText');
+          }
+        } else if (result.tickers != null && result.tickers!.isNotEmpty) {
+          // 向後兼容
+          points.add('文章主要討論${result.tickers!.join('、')}');
+          final sentimentText = _getSentimentText(result.sentiment ?? 'Neutral');
+          points.add('整體觀點偏向$sentimentText');
+        } else {
+          points.add('文章主要討論市場動態');
+        }
       }
     } else if (state.errorMessage != null) {
       points.add('⚠️ ${state.errorMessage}');
@@ -666,32 +681,8 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Ticker 卡片
-          _buildEditCard(
-            title: '投資標的 (Ticker)',
-            icon: Icons.show_chart,
-            gradientColors: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-            isRequired: true,
-            isFilled: state.ticker != null && state.ticker!.isNotEmpty,
-            child: TickerAutocompleteField(
-              initialValue: state.ticker,
-              onChanged: (ticker) => ref.read(draftStateProvider.notifier).updateTicker(ticker),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Sentiment 卡片
-          _buildEditCard(
-            title: '走勢情緒',
-            icon: Icons.trending_up,
-            gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
-            isRequired: false,
-            isFilled: true,
-            child: SentimentSelector(
-              selectedSentiment: state.sentiment,
-              onChanged: (sentiment) => ref.read(draftStateProvider.notifier).updateSentiment(sentiment),
-            ),
-          ),
+          // 多標的卡片
+          _buildMultiTickerCard(state),
           const SizedBox(height: 8),
 
           // KOL 卡片
@@ -901,6 +892,214 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             color: isSelected ? Colors.white : Colors.grey.shade600,
           ),
         ),
+      ),
+    );
+  }
+
+  /// 多標的卡片
+  Widget _buildMultiTickerCard(DraftFormState state) {
+    final tickerAnalyses = state.tickerAnalyses;
+    final isFilled = tickerAnalyses.isNotEmpty;
+    final showPulse = !isFilled;
+
+    return PulsingBorderCard(
+      showPulse: showPulse,
+      normalGradientColors: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.show_chart, color: Colors.white, size: 14),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '投資標的',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+              if (!isFilled) ...[
+                const SizedBox(width: 4),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (tickerAnalyses.isEmpty)
+            const Text(
+              'AI 分析中或未識別到標的，請手動輸入',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            )
+          else
+            ...tickerAnalyses.asMap().entries.map((entry) {
+              final index = entry.key;
+              final tickerAnalysis = entry.value;
+              return _buildTickerItem(index, tickerAnalysis, state);
+            }).toList(),
+          const SizedBox(height: 8),
+          // 新增標的按鈕
+          OutlinedButton.icon(
+            onPressed: () => _showAddTickerDialog(),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('新增標的'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF3B82F6),
+              side: const BorderSide(color: Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 單一標的項目
+  Widget _buildTickerItem(int index, TickerAnalysisData tickerAnalysis, DraftFormState state) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tickerAnalysis.isPrimary ? Colors.blue.shade50 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: tickerAnalysis.isPrimary ? Colors.blue.shade300 : Colors.grey.shade300,
+          width: tickerAnalysis.isPrimary ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (tickerAnalysis.isPrimary)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    '主要',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              if (tickerAnalysis.isPrimary) const SizedBox(width: 6),
+              Expanded(
+                child: TickerAutocompleteField(
+                  initialValue: tickerAnalysis.ticker,
+                  onChanged: (ticker) {
+                    final updated = List<TickerAnalysisData>.from(state.tickerAnalyses);
+                    updated[index] = updated[index].copyWith(ticker: ticker);
+                    ref.read(draftStateProvider.notifier).updateTickerAnalyses(updated);
+                  },
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 18),
+                color: Colors.red,
+                onPressed: () {
+                  final updated = List<TickerAnalysisData>.from(state.tickerAnalyses);
+                  updated.removeAt(index);
+                  // 如果刪除的是主要標的，將第一個設為主要
+                  if (tickerAnalysis.isPrimary && updated.isNotEmpty) {
+                    updated[0] = updated[0].copyWith(isPrimary: true);
+                  }
+                  ref.read(draftStateProvider.notifier).updateTickerAnalyses(updated);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text(
+                '情緒：',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              Expanded(
+                child: SentimentSelector(
+                  selectedSentiment: tickerAnalysis.sentiment,
+                  onChanged: (sentiment) {
+                    ref.read(draftStateProvider.notifier).updateTickerSentiment(index, sentiment);
+                  },
+                ),
+              ),
+              if (!tickerAnalysis.isPrimary)
+                TextButton(
+                  onPressed: () {
+                    ref.read(draftStateProvider.notifier).setPrimaryTicker(index);
+                  },
+                  child: const Text('設為主要'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 顯示新增標的對話框
+  void _showAddTickerDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('新增標的'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '股票代號',
+            hintText: '例如：AAPL',
+          ),
+          textCapitalization: TextCapitalization.characters,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final ticker = controller.text.trim().toUpperCase();
+              if (ticker.isNotEmpty) {
+                final state = ref.read(draftStateProvider);
+                final updated = List<TickerAnalysisData>.from(state.tickerAnalyses);
+                updated.add(TickerAnalysisData(
+                  ticker: ticker,
+                  sentiment: 'Neutral',
+                  isPrimary: updated.isEmpty, // 如果沒有標的，設為主要
+                ));
+                ref.read(draftStateProvider.notifier).updateTickerAnalyses(updated);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('新增'),
+          ),
+        ],
       ),
     );
   }

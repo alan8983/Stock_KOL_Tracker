@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:syncfusion_flutter_core/core.dart';
 import 'presentation/screens/home/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 註冊 Syncfusion License 已不需要（從 18.3.0.x 版本開始）
-  // SyncfusionLicense.registerLicense() 已移除
+  // 註冊 Syncfusion Community License
+  SyncfusionLicense.registerLicense(
+    'Ngo9BigBOggjHTQxAR8/V1JGaF5cXGpCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH1ceXRSRWVZUEx2XkRWYEs='
+  );
   
   // 載入 .env 檔案
   // 在開發階段，.env 檔案應該在專案根目錄

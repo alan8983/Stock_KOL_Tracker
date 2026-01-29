@@ -31,16 +31,33 @@ class Stocks extends Table {
 class Posts extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get kolId => integer().references(KOLs, #id)();
-  TextColumn get stockTicker => text().references(Stocks, #ticker)();
+  // 注意：stockTicker 和 sentiment 已移至 PostStocks 表，保留此欄位僅為向後兼容
+  @Deprecated('使用 PostStocks 表代替')
+  TextColumn get stockTicker => text().references(Stocks, #ticker).nullable()();
   TextColumn get content => text()();
-  TextColumn get sentiment => text()();
+  @Deprecated('使用 PostStocks 表代替')
+  TextColumn get sentiment => text().nullable()();
   DateTimeColumn get postedAt => dateTime()();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get status => text()();
   TextColumn get aiAnalysisJson => text().nullable()(); // AI 分析結果（JSON 格式）
 }
 
-// Table 4: StockPrices
+// Table 4: PostStocks (Post 與 Stock 的多對多關聯表)
+class PostStocks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get postId => integer().references(Posts, #id)();
+  TextColumn get stockTicker => text().references(Stocks, #ticker)();
+  TextColumn get sentiment => text()(); // 該標的的情緒 (Bullish/Bearish/Neutral)
+  BoolColumn get isPrimary => boolean().withDefault(const Constant(false))(); // 是否為主要標的
+  
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {postId, stockTicker}, // 確保同一 Post 不會有重複的 Stock
+  ];
+}
+
+// Table 5: StockPrices
 class StockPrices extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get ticker => text().references(Stocks, #ticker)();
@@ -52,7 +69,7 @@ class StockPrices extends Table {
   IntColumn get volume => integer()();
 }
 
-@DriftDatabase(tables: [KOLs, Stocks, Posts, StockPrices])
+@DriftDatabase(tables: [KOLs, Stocks, Posts, PostStocks, StockPrices])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : _skipDefaultData = false, super(_openConnection());
   
@@ -64,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   final bool _skipDefaultData;
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -132,6 +149,23 @@ class AppDatabase extends _$AppDatabase {
         // 從版本 1 升級到版本 2：新增 aiAnalysisJson 欄位
         if (from == 1 && to >= 2) {
           await m.addColumn(posts, posts.aiAnalysisJson);
+        }
+        
+        // 從版本 2 升級到版本 3：新增 PostStocks 表並遷移資料
+        if (from <= 2 && to >= 3) {
+          // 建立 PostStocks 表
+          await m.createTable(postStocks);
+          
+          // 遷移現有資料：將 Posts.stockTicker + sentiment 轉移到 PostStocks 表
+          await customStatement('''
+            INSERT INTO post_stocks (post_id, stock_ticker, sentiment, is_primary)
+            SELECT id, stock_ticker, sentiment, 1
+            FROM posts
+            WHERE stock_ticker IS NOT NULL AND stock_ticker != ''
+          ''');
+          
+          // 將 stockTicker 和 sentiment 設為可為 null（向後兼容）
+          // 注意：SQLite 不支援直接修改欄位，所以我們保留欄位但標記為 deprecated
         }
       },
     );

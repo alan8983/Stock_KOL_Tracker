@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../theme/chart_theme_config.dart';
 
 /// 自定義情緒標記組件
-/// 使用 CustomPaint 繪製五邊形，並在中央顯示文字標籤（L/N/S）
+/// 使用 CustomPaint 繪製方形，並在中央顯示文字標籤（L/N/S）
 class SentimentMarker extends StatelessWidget {
   final String sentiment;
   final Color color;
@@ -36,7 +35,7 @@ class SentimentMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size, size),
-      painter: _PentagonPainter(
+      painter: _SquarePainter(
         color: color,
         label: label,
       ),
@@ -44,12 +43,12 @@ class SentimentMarker extends StatelessWidget {
   }
 }
 
-/// 五邊形繪製器
-class _PentagonPainter extends CustomPainter {
+/// 方形繪製器
+class _SquarePainter extends CustomPainter {
   final Color color;
   final String label;
 
-  _PentagonPainter({
+  _SquarePainter({
     required this.color,
     required this.label,
   });
@@ -65,41 +64,22 @@ class _PentagonPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
-    // 繪製五邊形
-    final path = _createPentagonPath(size);
-    canvas.drawPath(path, paint);
-    canvas.drawPath(path, borderPaint);
+    // 繪製方形（稍微縮小以留邊距）
+    const padding = 2.0;
+    final rect = Rect.fromLTWH(
+      padding,
+      padding,
+      size.width - padding * 2,
+      size.height - padding * 2,
+    );
+    
+    // 繪製圓角矩形（圓角半徑為2，看起來更現代）
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(2.0));
+    canvas.drawRRect(rrect, paint);
+    canvas.drawRRect(rrect, borderPaint);
 
     // 繪製文字標籤
     _drawLabel(canvas, size);
-  }
-
-  /// 創建五邊形路徑（正五邊形，頂點朝上）
-  Path _createPentagonPath(Size size) {
-    final path = Path();
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-    final radius = size.width / 2 * 0.9; // 稍微縮小以留邊距
-
-    // 五邊形的5個頂點
-    // 從正上方開始（-90度），順時針繪製
-    final angleOffset = -math.pi / 2; // 從頂部開始
-    final angleStep = 2 * math.pi / 5; // 每個角72度
-
-    for (int i = 0; i < 5; i++) {
-      final angle = angleOffset + angleStep * i;
-      final x = centerX + radius * math.cos(angle);
-      final y = centerY + radius * math.sin(angle);
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    path.close();
-    return path;
   }
 
   /// 繪製中央文字標籤
@@ -126,7 +106,7 @@ class _PentagonPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PentagonPainter oldDelegate) {
+  bool shouldRepaint(covariant _SquarePainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.label != label;
   }
 }

@@ -52,8 +52,13 @@ class PostCard extends ConsumerWidget {
         : post.content;
     
     final isBookmarked = ref.watch(bookmarkProvider).contains(post.id);
-    final sentimentColor = _getSentimentColor(post.sentiment);
-    final sentimentIcon = _getSentimentIcon(post.sentiment);
+    final primarySentiment = postWithKOL.primarySentiment ?? 'Neutral';
+    final sentimentColor = _getSentimentColor(primarySentiment);
+    final sentimentIcon = _getSentimentIcon(primarySentiment);
+    final primaryTicker = postWithKOL.primaryTicker ?? 'N/A';
+    final otherTickersCount = postWithKOL.postStocks.length > 1 
+        ? postWithKOL.postStocks.length - 1 
+        : 0;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -118,7 +123,7 @@ class PostCard extends ConsumerWidget {
                         Icon(sentimentIcon, size: 14, color: sentimentColor),
                         const SizedBox(width: 4),
                         Text(
-                          post.sentiment,
+                          primarySentiment,
                           style: TextStyle(
                             fontSize: 12,
                             color: sentimentColor,
@@ -132,12 +137,30 @@ class PostCard extends ConsumerWidget {
                   const Icon(Icons.show_chart, size: 16, color: Colors.grey),
                   const SizedBox(width: 4),
                   Text(
-                    post.stockTicker,
+                    primaryTicker,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
+                  if (otherTickersCount > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '+$otherTickersCount',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
